@@ -1,0 +1,167 @@
+import torch
+
+import dgl
+from dgl.data import CoraGraphDataset
+
+from ogb.nodeproppred import DglNodePropPredDataset
+
+from model import GraphTransformer
+from train import train_iter, evaluate, train_iter_batched, evaluate_batched
+from args import parse_args
+
+from scipy import sparse as sp
+
+import numpy as np
+
+def add_encodings(g, dim, type="lap"):
+
+    if type == "lap":
+        return add_lap_encodings(g, dim)
+    elif type == "dummy":
+        A = g.adjacency_matrix(scipy_fmt="csr").astype(float)
+        g.ndata["lap_pos_enc"] = torch.zeros((A.shape[0], dim)).float()
+        return g
+
+
+
+def add_lap_encodings(g, dim):
+
+    A = g.adjacency_matrix(scipy_fmt="csr").astype(float)
+    N = sp.diags(dgl.backend.asnumpy(g.in_degrees()).clip(1) ** -0.5, dtype=float)
+    L = sp.eye(g.number_of_nodes()) - N * A * N
+
+    eigval, eigvec = sp.linalg.eigs(L, k=dim + 1, which="SR", tol=1e-2)
+
+    eigvec = eigvec[:, eigval.argsort()]
+    g.ndata["lap_pos_enc"] = torch.from_numpy(eigvec[:, 1 : dim + 1]).float()
+    return g
+
+
+def run_single_graph_batched(args, g, *idx):
+
+    train_idx, valid_idx, test_idx  = idx
+
+    sampler = dgl.dataloading.MultiLayerFullNeighborSampler(2)
+    dataloader = dgl.dataloading.NodeDataLoader(
+        g, train_idx, sampler,
+        batch_size=32,
+        shuffle=True,
+        drop_last=False,
+        num_workers=1)
+
+    model = GraphTransformer(args)
+
+    print(f"[!] No. of params: {sum(p.numel() for p in model.parameters())}")
+    optimizer = torch.optim.Adam(
+        model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay
+    )
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        mode="min",
+        factor=args.lr_reduce_factor,
+        patience=args.lr_schedule_patience,
+    )
+
+    for epoch in range(args.epochs):
+
+        epoch_train_losses, epoch_val_losses = [], []
+        epoch_train_accs, epoch_val_accs = [], []
+
+        for input_nodes, output_nodes, blocks in dataloader:
+
+            loss, acc, optimizer = train_iter_batched(
+                model, input_nodes, output_nodes, blocks, optimizer, args.device, epoch
+            )
+
+            epoch_train_losses.append(loss)
+            epoch_train_accs.append(acc)
+        print(
+                f"Epoch: {epoch} | Train Loss: {np.mean(epoch_train_losses):.4f} | Train Acc: {np.mean(epoch_train_accs):.4f}"
+            )
+
+        # if epoch % 10 == 0:
+        #     eval_loss, eval_acc = evaluate_batched(model, blocks, args.device)
+        #     print(
+        #         f"Epoch: {epoch} | Train Loss: {np.mean(epoch_train_loss):.4f} | Train Acc: {acc:.4f} | Eval Loss: {eval_loss:.4f} | Eval Acc: {eval_acc:.4f}"
+        #     )
+    #         scheduler.step(eval_loss)
+    # test_loss, test_acc = evaluate_batched(model, g, blocks, args.device)
+    # print(f"Test loss: {test_loss:.4f} | Test acc: {test_acc:.4f}")
+
+
+def run_single_graph(args, g, *a):
+
+    train_idx, valid_idx, test_idx  = a
+
+    model = GraphTransformer(args)
+
+    print(f"[!] Number of params: {sum(p.numel() for p in model.parameters())}")
+    optimizer = torch.optim.Adam(
+        model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay
+    )
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+        optimizer,
+        mode="min",
+        factor=args.lr_reduce_factor,
+        patience=args.lr_schedule_patience,
+    )
+
+    # epoch_train_losses, epoch_val_losses = [], []
+    # epoch_train_accs, epoch_val_accs = [], []
+
+    for epoch in range(args.epochs):
+        loss, acc, optimizer = train_iter(
+            model, g, train_idx, optimizer, args.device, epoch
+        )
+
+        if epoch % 10 == 0:
+            eval_loss, eval_acc = evaluate(model, g, val_idx, args.device)
+            print(
+                f"Epoch: {epoch} | Train Loss: {loss:.4f} | Train Acc: {acc:.4f} | Eval Loss: {eval_loss:.4f} | Eval Acc: {eval_acc:.4f}"
+            )
+            scheduler.step(eval_loss)
+    test_loss, test_acc = evaluate(model, g, g.ndata["test_mask"], args.device)
+    print(f"Test loss: {test_loss:.4f} | Test acc: {test_acc:.4f}")
+
+
+def run_multiple_graphs(args, dataloader):
+    pass
+
+def main():
+
+    args = parse_args()
+    dataset = DglNodePropPredDataset(name = "ogbn-arxiv")
+
+    print("[!] Dataset loaded")
+
+    split_idx = dataset.get_idx_split()
+    train_idx, valid_idx, test_idx = split_idx["train"], split_idx["valid"], split_idx["test"]
+
+
+    g, label = dataset[0]
+    g.ndata["label"] = label
+
+    # dataset = CoraGraphDataset()
+    # g = dataset[0]
+    
+
+    # Cora specific
+    # args.in_dim = 1433
+    # args.num_classes = 7
+
+    
+    args.in_dim = g.ndata["feat"].shape[1]
+    args.num_classes = (np.amax(g.ndata["label"].numpy(), axis=0)+1)[0]
+
+
+    print(f"[!] No. of nodes: {g.num_nodes()} | No. of feature dimensions: {args.in_dim} | No. of classes: {args.num_classes}")
+
+    args.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    g = add_encodings(g, args.pos_enc_dim, type="lap")
+    print("[!] Added positional encodings")
+    run_single_graph_batched(args, g, train_idx, valid_idx, test_idx)
+
+
+if __name__ == "__main__":
+    main()
