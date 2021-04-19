@@ -42,12 +42,28 @@ def run_single_graph_batched(args, g, *idx):
     train_idx, valid_idx, test_idx  = idx
 
     sampler = dgl.dataloading.MultiLayerFullNeighborSampler(2)
-    dataloader = dgl.dataloading.NodeDataLoader(
+    train_dataloader = dgl.dataloading.NodeDataLoader(
         g, train_idx, sampler,
         batch_size=32,
         shuffle=True,
         drop_last=False,
+        num_workers=args.num_workers)
+    
+    val_dataloader = dgl.dataloading.NodeDataLoader(
+        g, valid_idx, sampler,
+        batch_size=32,
+        shuffle=True,
+        drop_last=False,
         num_workers=1)
+    
+    test_dataloader = dgl.dataloading.NodeDataLoader(
+        g, test_idx, sampler,
+        batch_size=32,
+        shuffle=True,
+        drop_last=False,
+        num_workers=1)
+
+    
 
     model = GraphTransformer(args)
 
@@ -67,7 +83,7 @@ def run_single_graph_batched(args, g, *idx):
         epoch_train_losses, epoch_val_losses = [], []
         epoch_train_accs, epoch_val_accs = [], []
 
-        for input_nodes, output_nodes, blocks in dataloader:
+        for input_nodes, output_nodes, blocks in train_dataloader:
 
             loss, acc, optimizer = train_iter_batched(
                 model, input_nodes, output_nodes, blocks, optimizer, args.device, epoch
@@ -79,14 +95,34 @@ def run_single_graph_batched(args, g, *idx):
                 f"Epoch: {epoch} | Train Loss: {np.mean(epoch_train_losses):.4f} | Train Acc: {np.mean(epoch_train_accs):.4f}"
             )
 
-        # if epoch % 10 == 0:
-        #     eval_loss, eval_acc = evaluate_batched(model, blocks, args.device)
-        #     print(
-        #         f"Epoch: {epoch} | Train Loss: {np.mean(epoch_train_loss):.4f} | Train Acc: {acc:.4f} | Eval Loss: {eval_loss:.4f} | Eval Acc: {eval_acc:.4f}"
-        #     )
-    #         scheduler.step(eval_loss)
-    # test_loss, test_acc = evaluate_batched(model, g, blocks, args.device)
-    # print(f"Test loss: {test_loss:.4f} | Test acc: {test_acc:.4f}")
+        ### Validation
+        if epoch % 10 == 0:
+            
+            epoch_val_losses, epoch_val_accs = [], []
+
+            for input_nodes, output_nodes, blocks in val_dataloader:
+
+                eval_loss, eval_acc = evaluate_batched(model, blocks, args.device)
+                epoch_val_losses.append(eval_loss)
+                epoch_val_accs.append(eval_acc)
+
+            print(
+                f"Epoch: {epoch} | Val Loss: {np.mean(epoch_val_losses):.4f} | Eval Acc: {np.mean(epoch_val_accs):.4f}"
+            )
+            #scheduler.step(eval_loss)
+
+    test_losses, test_accs = [], []
+
+    for input_nodes, output_nodes, blocks in test_dataloader:
+
+        test_loss, test_acc = evaluate_batched(model, blocks, args.device)
+        test_losses.append(test_loss)
+        test_accs.append(test_acc)
+
+    print(
+        f"Epoch: {epoch} | Test Loss: {np.mean(test_losses):.4f} | Eval Acc: {np.mean(test_accs):.4f}"
+    )
+
 
 
 def run_single_graph(args, g, *a):

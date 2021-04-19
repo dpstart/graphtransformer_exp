@@ -34,7 +34,11 @@ def train_iter_batched(model, input_nodes, output_nodes, blocks, optimizer, devi
 
 def evaluate_batched(model, blocks, device):
 
+    model = model.to(device)
+    blocks = [b.to(device) for b in blocks]
+
     model.eval()
+
     x = blocks[0].srcdata["feat"]
     lap_pos_enc = blocks[0].srcdata["lap_pos_enc"]
     labels = blocks[-1].dstdata["label"]
@@ -42,9 +46,8 @@ def evaluate_batched(model, blocks, device):
     scores = model(blocks, x, lap_pos_enc)    
     loss = model.loss(scores, labels)
 
-    epoch_loss = loss.item()
-    epoch_train_acc = accuracy(scores, labels)
-    return epoch_loss, epoch_train_acc
+    acc = accuracy(scores, labels)
+    return loss.item(), acc
 
 
 def train_iter(model, g, mask, optimizer, device, epoch):

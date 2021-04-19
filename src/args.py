@@ -59,4 +59,8 @@ def parse_args():
     parser.add_argument(
         "--lap_pos_enc", help="Please give a value for lap_pos_enc", default=True
     )
+
+    parser.add_argument(
+        "--num_workers", help="Please give a value for num-workers", default=4
+    )
     return parser.parse_args()
