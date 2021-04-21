@@ -11,20 +11,25 @@ def accuracy(scores, targets):
     return acc
 
 
-def train_iter_batched(model, input_nodes, output_nodes, blocks, optimizer, device, epoch):
+def train_iter_batched(model, g, input_nodes, output_nodes, blocks, optimizer, device, epoch):
 
     model = model.to(device)
     blocks = [b.to(device) for b in blocks]
 
     model.train()
 
-    x = blocks[0].srcdata["feat"]
-    lap_pos_enc = blocks[0].srcdata["lap_pos_enc"]
+    # x = blocks[0].srcdata["feat"]
+    # lap_pos_enc = blocks[0].srcdata["lap_pos_enc"]
+    # labels = blocks[-1].dstdata["label"]
+
+    x = g.ndata["feat"]
+    lap_pos_enc = g.ndata["lap_pos_enc"]
     labels = blocks[-1].dstdata["label"]
+
 
     optimizer.zero_grad()
 
-    scores = model(blocks, x, lap_pos_enc)
+    scores = model(blocks, x, lap_pos_enc, input_nodes, output_nodes)
 
     loss = model.loss(scores, labels)
     loss.backward(retain_graph=True)
@@ -32,18 +37,22 @@ def train_iter_batched(model, input_nodes, output_nodes, blocks, optimizer, devi
     acc = accuracy(scores, labels)
     return loss.item(), acc, optimizer
 
-def evaluate_batched(model, blocks, device):
+def evaluate_batched(model, g, input_nodes, output_nodes, blocks, device):
 
     model = model.to(device)
     blocks = [b.to(device) for b in blocks]
 
     model.eval()
 
-    x = blocks[0].srcdata["feat"]
-    lap_pos_enc = blocks[0].srcdata["lap_pos_enc"]
+    # x = blocks[0].srcdata["feat"]
+    # lap_pos_enc = blocks[0].srcdata["lap_pos_enc"]
+    # labels = blocks[-1].dstdata["label"]
+    x = g.ndata["feat"]
+    lap_pos_enc = g.ndata["lap_pos_enc"]
     labels = blocks[-1].dstdata["label"]
 
-    scores = model(blocks, x, lap_pos_enc)    
+
+    scores = model(blocks, x, lap_pos_enc, input_nodes, output_nodes)    
     loss = model.loss(scores, labels)
 
     acc = accuracy(scores, labels)

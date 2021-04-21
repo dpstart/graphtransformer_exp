@@ -63,4 +63,7 @@ def parse_args():
     parser.add_argument(
         "--num_workers", help="Please give a value for num-workers", default=4
     )
+    parser.add_argument(
+        "--dataset", help="Please give a value for dataset", default="arxiv"
+    )
     return parser.parse_args()

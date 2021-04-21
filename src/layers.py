@@ -10,7 +10,7 @@ import numpy as np
 def src_dot_dst(src_field, dst_field, out_field):
     def func(edges):
         return {
-            out_field: (edges.src[src_field] * edges.src[dst_field]).sum(
+            out_field: (edges.src[src_field] * edges.dst[dst_field]).sum(
                 -1, keepdim=True
             )
         }
@@ -76,13 +76,13 @@ class MultiHeadAttention(nn.Module):
         # attention score from the neighbors, and they are summed.
         g.send_and_recv(eids, fn.copy_edge("score", "score"), fn.sum("score", "z"))
 
-    def forward(self, g, h):
+    def forward(self, g, h_src, h_dst):
 
-        Q_h = self.Q(h)
-        K_h = self.K(h)
-        V_h = self.V(h)
+        Q_h = self.Q(h_dst)
+        K_h = self.K(h_src)
+        V_h = self.V(h_src)
 
-        g.srcdata["Q_h"] = Q_h.view(-1, self.num_heads, self.out_dim)
+        g.dstdata["Q_h"] = Q_h.view(-1, self.num_heads, self.out_dim)
         g.srcdata["K_h"] = K_h.view(-1, self.num_heads, self.out_dim)
         g.srcdata["V_h"] = V_h.view(-1, self.num_heads, self.out_dim)
 
@@ -101,6 +101,7 @@ class GraphTransformerLayer(nn.Module):
         self.out_channels = out_dim
         self.num_heads = num_heads
         self.dropout = dropout
+        
 
         self.attention = MultiHeadAttention(in_dim, out_dim // num_heads, num_heads)
         self.O = nn.Linear(out_dim, out_dim)
@@ -110,14 +111,15 @@ class GraphTransformerLayer(nn.Module):
         self.FFN_layer2 = nn.Linear(out_dim * 2, out_dim)
         self.batch_norm2 = nn.BatchNorm1d(out_dim)
 
-    def forward(self, g, x):
+    def forward(self, g, x_src, x_dst):
 
-        # x: (src_nodes, num_features)
-        h_in1 = g.dstdata["feat"]
-
+        # x: (dst_nodes, num_features)
+        #h_in1 = g.dstdata["feat"]
+        
+        h_in1 = x_dst
 
         # attn_out: (dst_nodes, num_heads, num_feats)
-        attn_out = self.attention(g, x)
+        attn_out = self.attention(g, x_src, x_dst)
 
         # h: (dst_nodes, num_feats)
         h = attn_out.view(-1, self.out_channels)
