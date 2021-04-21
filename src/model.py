@@ -48,23 +48,18 @@ class GraphTransformer(nn.Module):
         self.mlp = MLPReadout(out_dim, num_classes)
 
     def forward(self, blocks, x, x_lap_pos_enc, src_nodes, dst_nodes):
+        # TODO add dropout
 
-        h_src = self.embedding_h(x[blocks[0].srcdata["_ID"]])
-
+        h = self.embedding_h(x)
         h_lap_pos_enc = self.embedding_lap_pos_enc(x_lap_pos_enc.float())
-        h_src = h_src + h_lap_pos_enc[blocks[0].srcdata["_ID"]]
+        h = h + h_lap_pos_enc
 
-        h_src = self.in_feat_dropout(h_src)
+        h_src = h[blocks[0].srcdata["_ID"]]
 
         for i, layer in enumerate(self.layers):
+            h_src = layer(blocks[i], h_src, h[blocks[i].dstdata["_ID"]])
 
-            h_dst = self.embedding_h(x[blocks[i].dstdata["_ID"]])
-            h_dst = h_dst + h_lap_pos_enc[blocks[i].dstdata["_ID"]]
-            h_dst = self.in_feat_dropout(h_dst)
-            h = layer(blocks[i], h_src, h_dst)
-            h_src = h
-
-        out = self.mlp(h)
+        out = self.mlp(h_src)
         return out
 
     def loss(self, pred, label):
