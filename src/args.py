@@ -37,11 +37,9 @@ def parse_args():
     )
     parser.add_argument("--L", help="Please give a value for L")
     parser.add_argument(
-        "--hidden_dim", help="Please give a value for hidden_dim", default=128
+        "--hidden_dim", help="Please give a value for hidden_dim", default=32
     )
-    parser.add_argument(
-        "--out_dim", help="Please give a value for out_dim", default=128
-    )
+    parser.add_argument("--out_dim", help="Please give a value for out_dim", default=32)
     parser.add_argument("--edge_feat", help="Please give a value for edge_feat")
     parser.add_argument("--readout", help="Please give a value for readout")
     parser.add_argument(
@@ -51,7 +49,7 @@ def parse_args():
         "--in_feat_dropout", help="Please give a value for in_feat_dropout", default=0.0
     )
     parser.add_argument(
-        "--dropout", help="Please give a value for dropout", default=0.3
+        "--dropout", help="Please give a value for dropout", default=0.0
     )
     parser.add_argument("--self_loop", help="Please give a value for self_loop")
     parser.add_argument(
