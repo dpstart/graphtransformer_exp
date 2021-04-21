@@ -86,7 +86,6 @@ class MultiHeadAttention(nn.Module):
         g.srcdata["K_h"] = K_h.view(-1, self.num_heads, self.out_dim)
         g.srcdata["V_h"] = V_h.view(-1, self.num_heads, self.out_dim)
 
-
         self.propagate(g)
         out = g.dstdata["wV"]
         return out
@@ -101,7 +100,6 @@ class GraphTransformerLayer(nn.Module):
         self.out_channels = out_dim
         self.num_heads = num_heads
         self.dropout = dropout
-        
 
         self.attention = MultiHeadAttention(in_dim, out_dim // num_heads, num_heads)
         self.O = nn.Linear(out_dim, out_dim)
@@ -114,21 +112,22 @@ class GraphTransformerLayer(nn.Module):
     def forward(self, g, x_src, x_dst):
 
         # x: (dst_nodes, num_features)
-        #h_in1 = g.dstdata["feat"]
-        
+        # h_in1 = g.dstdata["feat"]
+
+        # (dst_nodes, num_features)
         h_in1 = x_dst
 
-        # attn_out: (dst_nodes, num_heads, num_feats)
+        # attn_out: (dst_nodes, num_heads, num_head_features)
         attn_out = self.attention(g, x_src, x_dst)
 
-        # h: (dst_nodes, num_feats)
+        # h: (dst_nodes, num_features)
         h = attn_out.view(-1, self.out_channels)
         h = F.dropout(h, self.dropout, training=self.training)
 
-        # h: (dst_nodes, out_dim)
+        # h: (dst_nodes, num_features)
         h = self.O(h)
 
-
+        # Residual connection
         h = h_in1 + h
         self.batch_norm1(h)
         h_in2 = h

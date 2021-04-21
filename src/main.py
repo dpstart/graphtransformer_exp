@@ -13,6 +13,7 @@ from scipy import sparse as sp
 
 import numpy as np
 
+
 def add_encodings(g, dim, type="lap"):
 
     if type == "lap":
@@ -43,27 +44,34 @@ def run_single_graph_batched(args, g, *idx):
 
     sampler = dgl.dataloading.MultiLayerFullNeighborSampler(1)
     train_dataloader = dgl.dataloading.NodeDataLoader(
-        g, train_idx, sampler,
+        g,
+        train_idx,
+        sampler,
         batch_size=32,
         shuffle=True,
         drop_last=False,
-        num_workers=args.num_workers)
-    
-    val_dataloader = dgl.dataloading.NodeDataLoader(
-        g, valid_idx, sampler,
-        batch_size=32,
-        shuffle=True,
-        drop_last=False,
-        num_workers=1)
-    
-    test_dataloader = dgl.dataloading.NodeDataLoader(
-        g, test_idx, sampler,
-        batch_size=32,
-        shuffle=True,
-        drop_last=False,
-        num_workers=1)
+        num_workers=args.num_workers,
+    )
 
-    
+    val_dataloader = dgl.dataloading.NodeDataLoader(
+        g,
+        valid_idx,
+        sampler,
+        batch_size=32,
+        shuffle=True,
+        drop_last=False,
+        num_workers=1,
+    )
+
+    test_dataloader = dgl.dataloading.NodeDataLoader(
+        g,
+        test_idx,
+        sampler,
+        batch_size=32,
+        shuffle=True,
+        drop_last=False,
+        num_workers=1,
+    )
 
     model = GraphTransformer(args)
 
@@ -86,23 +94,32 @@ def run_single_graph_batched(args, g, *idx):
         for input_nodes, output_nodes, blocks in train_dataloader:
 
             loss, acc, optimizer = train_iter_batched(
-                model, g, input_nodes, output_nodes, blocks, optimizer, args.device, epoch
+                model,
+                g,
+                input_nodes,
+                output_nodes,
+                blocks,
+                optimizer,
+                args.device,
+                epoch,
             )
 
             epoch_train_losses.append(loss)
             epoch_train_accs.append(acc)
         print(
-                f"Epoch: {epoch} | Train Loss: {np.mean(epoch_train_losses):.4f} | Train Acc: {np.mean(epoch_train_accs):.4f}"
-            )
+            f"Epoch: {epoch} | Train Loss: {np.mean(epoch_train_losses):.4f} | Train Acc: {np.mean(epoch_train_accs):.4f}"
+        )
 
         ### Validation
         if epoch % 10 == 0:
-            
+
             epoch_val_losses, epoch_val_accs = [], []
 
             for input_nodes, output_nodes, blocks in val_dataloader:
 
-                eval_loss, eval_acc = evaluate_batched(model, g, input_nodes, output_nodes, blocks, args.device)
+                eval_loss, eval_acc = evaluate_batched(
+                    model, g, input_nodes, output_nodes, blocks, args.device
+                )
                 epoch_val_losses.append(eval_loss)
                 epoch_val_accs.append(eval_acc)
 
@@ -115,7 +132,9 @@ def run_single_graph_batched(args, g, *idx):
 
     for input_nodes, output_nodes, blocks in test_dataloader:
 
-        test_loss, test_acc = evaluate_batched(model, blocks, args.device)
+        test_loss, test_acc = evaluate_batched(
+            model, g, input_nodes, output_nodes, blocks, args.device
+        )
         test_losses.append(test_loss)
         test_accs.append(test_acc)
 
@@ -124,10 +143,9 @@ def run_single_graph_batched(args, g, *idx):
     )
 
 
-
 def run_single_graph(args, g, *a):
 
-    train_idx, valid_idx, test_idx  = a
+    train_idx, valid_idx, test_idx = a
 
     model = GraphTransformer(args)
 
@@ -160,18 +178,23 @@ def run_single_graph(args, g, *a):
 def run_multiple_graphs(args, dataloader):
     pass
 
+
 def main():
 
     args = parse_args()
 
     if args.dataset == "arxiv":
-        dataset = DglNodePropPredDataset(name = "ogbn-arxiv")
+        dataset = DglNodePropPredDataset(name="ogbn-arxiv")
         split_idx = dataset.get_idx_split()
-        train_idx, valid_idx, test_idx = split_idx["train"], split_idx["valid"], split_idx["test"]
+        train_idx, valid_idx, test_idx = (
+            split_idx["train"],
+            split_idx["valid"],
+            split_idx["test"],
+        )
         g, label = dataset[0]
         g.ndata["label"] = label
 
-        args.num_classes = (np.amax(g.ndata["label"].numpy(), axis=0)+1)[0]
+        args.num_classes = (np.amax(g.ndata["label"].numpy(), axis=0) + 1)[0]
 
     elif args.dataset == "cora":
 
@@ -182,12 +205,14 @@ def main():
         valid_idx = np.nonzero(g.ndata["val_mask"]).squeeze()
         test_idx = np.nonzero(g.ndata["test_mask"]).squeeze()
         args.num_classes = 7
-        
+        args.hidden_dim = 32
+
     args.in_dim = g.ndata["feat"].shape[1]
 
-
     print("[!] Dataset loaded")
-    print(f"[!] No. of nodes: {g.num_nodes()} | No. of feature dimensions: {args.in_dim} | No. of classes: {args.num_classes}")
+    print(
+        f"[!] No. of nodes: {g.num_nodes()} | No. of feature dimensions: {args.in_dim} | No. of classes: {args.num_classes}"
+    )
 
     args.device = "cuda" if torch.cuda.is_available() else "cpu"
 
