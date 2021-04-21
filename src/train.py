@@ -22,8 +22,8 @@ def train_iter_batched(model, g, input_nodes, output_nodes, blocks, optimizer, d
     # lap_pos_enc = blocks[0].srcdata["lap_pos_enc"]
     # labels = blocks[-1].dstdata["label"]
 
-    x = g.ndata["feat"]
-    lap_pos_enc = g.ndata["lap_pos_enc"]
+    x = g.ndata["feat"].to(device)
+    lap_pos_enc = g.ndata["lap_pos_enc"].to(device)
     labels = blocks[-1].dstdata["label"]
 
 
@@ -47,8 +47,8 @@ def evaluate_batched(model, g, input_nodes, output_nodes, blocks, device):
     # x = blocks[0].srcdata["feat"]
     # lap_pos_enc = blocks[0].srcdata["lap_pos_enc"]
     # labels = blocks[-1].dstdata["label"]
-    x = g.ndata["feat"]
-    lap_pos_enc = g.ndata["lap_pos_enc"]
+    x = g.ndata["feat"].to(device)
+    lap_pos_enc = g.ndata["lap_pos_enc"].to(device)
     labels = blocks[-1].dstdata["label"]
 
 
