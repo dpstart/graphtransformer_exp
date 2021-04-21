@@ -205,7 +205,6 @@ def main():
         valid_idx = np.nonzero(g.ndata["val_mask"]).squeeze()
         test_idx = np.nonzero(g.ndata["test_mask"]).squeeze()
         args.num_classes = 7
-        args.hidden_dim = 32
 
     args.in_dim = g.ndata["feat"].shape[1]
 

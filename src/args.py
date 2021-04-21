@@ -48,7 +48,7 @@ def parse_args():
         "--num_heads", help="Please give a value for n_heads", default=8
     )
     parser.add_argument(
-        "--in_feat_dropout", help="Please give a value for in_feat_dropout", default=0.3
+        "--in_feat_dropout", help="Please give a value for in_feat_dropout", default=0.0
     )
     parser.add_argument(
         "--dropout", help="Please give a value for dropout", default=0.3
