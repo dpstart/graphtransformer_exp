@@ -42,7 +42,7 @@ def run_single_graph_batched(args, g, *idx):
 
     train_idx, valid_idx, test_idx = idx
 
-    sampler = dgl.dataloading.MultiLayerNeighborSampler(1)
+    sampler = dgl.dataloading.MultiLayerNeighborSampler([100])
     train_dataloader = dgl.dataloading.NodeDataLoader(
         g,
         train_idx,
