@@ -177,6 +177,19 @@ def main():
         test_idx = np.nonzero(g.ndata["test_mask"]).squeeze()
         args.num_classes = 7
 
+    elif args.dataset == "products":
+        dataset = DglNodePropPredDataset(name="ogbn-products")
+        split_idx = dataset.get_idx_split()
+        train_idx, valid_idx, test_idx = (
+            split_idx["train"],
+            split_idx["valid"],
+            split_idx["test"],
+        )
+        g, label = dataset[0]
+        g.ndata["label"] = label
+
+        args.num_classes = (np.amax(g.ndata["label"].numpy(), axis=0) + 1)[0]
+
     args.in_dim = g.ndata["feat"].shape[1]
 
     print("[!] Dataset loaded")

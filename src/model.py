@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from layers import GraphTransformerLayer, MLPReadout
+import numpy as np
 import dgl
 
-import numpy as np
+from layers import GraphTransformerLayer, MLPReadout
 
 
 class GraphTransformer(nn.Module):
@@ -13,14 +13,14 @@ class GraphTransformer(nn.Module):
         super().__init__()
 
         in_dim_node = args.in_dim
-        hidden_dim = int(args.hidden_dim)
-        out_dim = int(args.out_dim)
-        num_classes = int(args.num_classes)
-        num_heads = int(args.num_heads)
-        in_feat_dropout = float(args.in_feat_dropout)
-        dropout = float(args.dropout)
+        hidden_dim = args.hidden_dim
+        out_dim = args.out_dim
+        num_classes = args.num_classes
+        num_heads = args.num_heads
+        in_feat_dropout = args.in_feat_dropout
+        dropout = args.dropout
+        pos_enc_dim = args.pos_enc_dim
 
-        ## The number of layers should match the number of blocks provided in the `forward` method
         num_layers = args.num_layers
 
         self.dropout = dropout
@@ -30,7 +30,6 @@ class GraphTransformer(nn.Module):
 
         self.layers = []
 
-        pos_enc_dim = args.pos_enc_dim
         self.embedding_lap_pos_enc = nn.Linear(pos_enc_dim, hidden_dim)
         self.embedding_h = nn.Linear(in_dim_node, hidden_dim)
         self.in_feat_dropout = nn.Dropout(in_feat_dropout)
@@ -56,6 +55,7 @@ class GraphTransformer(nn.Module):
 
         h_src = h[blocks[0].srcdata["_ID"]]
 
+        # Iterate through transformer layers
         for i, layer in enumerate(self.layers):
             h_src = layer(blocks[i], h_src, h[blocks[i].dstdata["_ID"]])
 

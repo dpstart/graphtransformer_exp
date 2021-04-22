@@ -56,7 +56,6 @@ def parse_args():
     parser.add_argument(
         "--edge_feat", help="Please give a value for edge_feat", type=bool
     )
-    # parser.add_argument("--readout", help="Please give a value for readout")
     parser.add_argument(
         "--num_heads", help="Please give a value for n_heads", default=8, type=int
     )
