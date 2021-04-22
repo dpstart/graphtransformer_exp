@@ -51,6 +51,7 @@ class GraphTransformer(nn.Module):
         # TODO add dropout
 
         h = self.embedding_h(x)
+        h = F.dropout(h, self.dropout, training=self.training)
         h_lap_pos_enc = self.embedding_lap_pos_enc(x_lap_pos_enc.float())
         h = h + h_lap_pos_enc
 

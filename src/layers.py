@@ -111,9 +111,6 @@ class GraphTransformerLayer(nn.Module):
 
     def forward(self, g, x_src, x_dst):
 
-        # x: (dst_nodes, num_features)
-        # h_in1 = g.dstdata["feat"]
-
         # (dst_nodes, num_features)
         h_in1 = x_dst
 

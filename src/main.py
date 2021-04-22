@@ -139,7 +139,7 @@ def run_single_graph_batched(args, g, *idx):
         test_accs.append(test_acc)
 
     print(
-        f"Epoch: {epoch} | Test Loss: {np.mean(test_losses):.4f} | Eval Acc: {np.mean(test_accs):.4f}"
+        f"Epoch: {epoch} | Test Loss: {np.mean(test_losses):.4f} | Test Acc: {np.mean(test_accs):.4f}"
     )
 
 

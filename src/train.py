@@ -33,7 +33,7 @@ def train_iter_batched(
     scores = model(blocks, x, lap_pos_enc, input_nodes, output_nodes)
 
     loss = model.loss(scores, labels)
-    loss.backward(retain_graph=True)
+    loss.backward()
     optimizer.step()
     acc = accuracy(scores, labels)
     return loss.item(), acc, optimizer
@@ -46,64 +46,19 @@ def evaluate_batched(model, g, input_nodes, output_nodes, blocks, device):
 
     model.eval()
 
-    x = g.ndata["feat"].to(device)
-    lap_pos_enc = g.ndata["lap_pos_enc"].to(device)
-    sign_flip = torch.rand(lap_pos_enc.size(1)).to(device)
-    sign_flip[sign_flip >= 0.5] = 1.0
-    sign_flip[sign_flip < 0.5] = -1.0
-    lap_pos_enc = lap_pos_enc * sign_flip.unsqueeze(0)
-
-    labels = blocks[-1].dstdata["label"]
-
-    scores = model(blocks, x, lap_pos_enc, input_nodes, output_nodes)
-    loss = model.loss(scores, labels)
-
-    acc = accuracy(scores, labels)
-    return loss.item(), acc
-
-
-def train_iter(model, g, mask, optimizer, device, epoch):
-
-    model.train()
-    epoch_loss = epoch_train_acc = 0
-
-    x = g.ndata["feat"].to(device)
-    try:
-        e = g.edata["feat"].to(device)
-    except:
-        e = None
-
-    labels = g.ndata["label"].to(device)
-    lap_pos_enc = g.ndata["lap_pos_enc"].to(device)
-    optimizer.zero_grad()
-
-    scores = model(g, x, e, lap_pos_enc)
-
-    loss = model.loss(scores[mask], labels[mask])
-    loss.backward(retain_graph=True)
-    optimizer.step()
-    epoch_loss += loss.item()
-    epoch_train_acc += accuracy(scores[mask], labels[mask])
-    return epoch_loss, epoch_train_acc, optimizer
-
-
-def evaluate(model, g, mask, device):
-
-    model.eval()
     with torch.no_grad():
+
         x = g.ndata["feat"].to(device)
-        try:
-            e = g.edata["feat"].to(device)
-        except:
-            e = None
-
-        labels = g.ndata["label"].to(device)
         lap_pos_enc = g.ndata["lap_pos_enc"].to(device)
+        sign_flip = torch.rand(lap_pos_enc.size(1)).to(device)
+        sign_flip[sign_flip >= 0.5] = 1.0
+        sign_flip[sign_flip < 0.5] = -1.0
+        lap_pos_enc = lap_pos_enc * sign_flip.unsqueeze(0)
 
-        scores = model(g, x, e, lap_pos_enc)
-        loss = model.loss(scores[mask], labels[mask])
+        labels = blocks[-1].dstdata["label"]
 
-    epoch_loss = loss.item()
-    epoch_train_acc = accuracy(scores[mask], labels[mask])
-    return epoch_loss, epoch_train_acc
+        scores = model(blocks, x, lap_pos_enc, input_nodes, output_nodes)
+        loss = model.loss(scores, labels)
 
+        acc = accuracy(scores, labels)
+    return loss.item(), acc

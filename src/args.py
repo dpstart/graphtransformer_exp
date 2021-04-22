@@ -8,15 +8,13 @@ def parse_args():
         "--config",
         help="Please give a config.json file with training/model/data/param details",
     )
-    parser.add_argument("--model", help="Please give a value for model name")
     parser.add_argument("--out_dir", help="Please give a value for out_dir")
-    parser.add_argument("--seed", help="Please give a value for seed")
     parser.add_argument(
         "--epochs", type=int, help="Please give a value for epochs", default=100
     )
     parser.add_argument("--batch_size", help="Please give a value for batch_size")
     parser.add_argument(
-        "--init_lr", help="Please give a value for init_lr", default=0.0007
+        "--init_lr", help="Please give a value for init_lr", default=0.001
     )
     parser.add_argument(
         "--lr_reduce_factor",
@@ -31,9 +29,6 @@ def parse_args():
     parser.add_argument("--min_lr", help="Please give a value for min_lr")
     parser.add_argument(
         "--weight_decay", help="Please give a value for weight_decay", default=0.0
-    )
-    parser.add_argument(
-        "--print_epoch_interval", help="Please give a value for print_epoch_interval"
     )
     parser.add_argument("--L", help="Please give a value for L")
     parser.add_argument(
