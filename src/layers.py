@@ -125,7 +125,7 @@ class GraphTransformerLayer(nn.Module):
         h = self.O(h)
 
         # Residual connection
-        h = F.relu(h_in1 + h)
+        h = h_in1 + h
         self.batch_norm1(h)
         h_in2 = h
 

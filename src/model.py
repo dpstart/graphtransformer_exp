@@ -21,9 +21,8 @@ class GraphTransformer(nn.Module):
         dropout = float(args.dropout)
 
         ## The number of layers should match the number of blocks provided in the `forward` method
-        num_layers = 2
+        num_layers = args.num_layers
 
-        self.readout = args.readout
         self.dropout = dropout
         self.num_classes = num_classes
         self.device = args.device
@@ -48,7 +47,7 @@ class GraphTransformer(nn.Module):
         self.mlp = MLPReadout(out_dim, num_classes)
 
     def forward(self, blocks, x, x_lap_pos_enc, src_nodes, dst_nodes):
-        # TODO add dropout
+        # TODO add in feat dropout
 
         h = self.embedding_h(x)
         h = F.dropout(h, self.dropout, training=self.training)

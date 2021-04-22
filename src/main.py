@@ -1,4 +1,6 @@
 import torch
+from scipy import sparse as sp
+import numpy as np
 
 import dgl
 from dgl.data import CoraGraphDataset
@@ -9,10 +11,6 @@ from model import GraphTransformer
 from train import train_iter_batched, evaluate_batched
 from args import parse_args
 
-from scipy import sparse as sp
-
-import numpy as np
-
 
 def add_encodings(g, dim, type="lap"):
 
@@ -20,12 +18,13 @@ def add_encodings(g, dim, type="lap"):
         return add_lap_encodings(g, dim)
     elif type == "dummy":
         A = g.adjacency_matrix(scipy_fmt="csr").astype(float)
-
         g.ndata["lap_pos_enc"] = torch.zeros((A.shape[0], dim)).float()
         return g
 
 
 def add_lap_encodings(g, dim):
+    """Add Laplacian positional encodings to the graph.
+    """
 
     A = g.adjacency_matrix(scipy_fmt="csr").astype(float)
     N = sp.diags(dgl.backend.asnumpy(g.in_degrees()).clip(1) ** -0.5, dtype=float)
@@ -38,16 +37,16 @@ def add_lap_encodings(g, dim):
     return g
 
 
-def run_single_graph_batched(args, g, *idx):
+def get_dataloaders(g, args, *idx):
 
     train_idx, valid_idx, test_idx = idx
 
-    sampler = dgl.dataloading.MultiLayerFullNeighborSampler(2)
+    sampler = dgl.dataloading.MultiLayerFullNeighborSampler(args.num_layers)
     train_dataloader = dgl.dataloading.NodeDataLoader(
         g,
         train_idx,
         sampler,
-        batch_size=32,
+        batch_size=args.batch_size,
         shuffle=True,
         drop_last=False,
         num_workers=args.num_workers,
@@ -57,7 +56,7 @@ def run_single_graph_batched(args, g, *idx):
         g,
         valid_idx,
         sampler,
-        batch_size=32,
+        batch_size=args.batch_size,
         shuffle=True,
         drop_last=False,
         num_workers=1,
@@ -67,15 +66,24 @@ def run_single_graph_batched(args, g, *idx):
         g,
         test_idx,
         sampler,
-        batch_size=32,
+        batch_size=args.batch_size,
         shuffle=True,
         drop_last=False,
         num_workers=1,
     )
 
-    model = GraphTransformer(args)
+    return train_dataloader, val_dataloader, test_dataloader
 
+
+def run_single_graph_batched(g, args, *idx):
+    """Run training on a single graph, using minibatches for the nodes.
+    """
+
+    train_dataloader, val_dataloader, test_dataloader = get_dataloaders(g, args, *idx)
+
+    model = GraphTransformer(args)
     print(f"[!] No. of params: {sum(p.numel() for p in model.parameters())}")
+
     optimizer = torch.optim.Adam(
         model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay
     )
@@ -111,10 +119,9 @@ def run_single_graph_batched(args, g, *idx):
         )
 
         ### Validation
-        if epoch % 10 == 0:
+        if epoch % args.val_interval == 0:
 
             epoch_val_losses, epoch_val_accs = [], []
-
             for input_nodes, output_nodes, blocks in val_dataloader:
 
                 eval_loss, eval_acc = evaluate_batched(
@@ -141,42 +148,6 @@ def run_single_graph_batched(args, g, *idx):
     print(
         f"Epoch: {epoch} | Test Loss: {np.mean(test_losses):.4f} | Test Acc: {np.mean(test_accs):.4f}"
     )
-
-
-def run_single_graph(args, g, *a):
-
-    train_idx, valid_idx, test_idx = a
-
-    model = GraphTransformer(args)
-
-    print(f"[!] Number of params: {sum(p.numel() for p in model.parameters())}")
-    optimizer = torch.optim.Adam(
-        model.parameters(), lr=args.init_lr, weight_decay=args.weight_decay
-    )
-    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-        optimizer,
-        mode="min",
-        factor=args.lr_reduce_factor,
-        patience=args.lr_schedule_patience,
-    )
-
-    for epoch in range(args.epochs):
-        loss, acc, optimizer = train_iter(
-            model, g, train_idx, optimizer, args.device, epoch
-        )
-
-        if epoch % 10 == 0:
-            eval_loss, eval_acc = evaluate(model, g, val_idx, args.device)
-            print(
-                f"Epoch: {epoch} | Train Loss: {loss:.4f} | Train Acc: {acc:.4f} | Eval Loss: {eval_loss:.4f} | Eval Acc: {eval_acc:.4f}"
-            )
-            scheduler.step(eval_loss)
-    test_loss, test_acc = evaluate(model, g, g.ndata["test_mask"], args.device)
-    print(f"Test loss: {test_loss:.4f} | Test acc: {test_acc:.4f}")
-
-
-def run_multiple_graphs(args, dataloader):
-    pass
 
 
 def main():
@@ -217,7 +188,7 @@ def main():
 
     g = add_encodings(g, int(args.pos_enc_dim), type="lap")
     print("[!] Added positional encodings")
-    run_single_graph_batched(args, g, train_idx, valid_idx, test_idx)
+    run_single_graph_batched(g, args, train_idx, valid_idx, test_idx)
 
 
 if __name__ == "__main__":
