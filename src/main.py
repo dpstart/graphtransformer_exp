@@ -6,7 +6,7 @@ from dgl.data import CoraGraphDataset
 from ogb.nodeproppred import DglNodePropPredDataset
 
 from model import GraphTransformer
-from train import train_iter, evaluate, train_iter_batched, evaluate_batched
+from train import train_iter_batched, evaluate_batched
 from args import parse_args
 
 from scipy import sparse as sp
