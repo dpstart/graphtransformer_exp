@@ -215,7 +215,7 @@ def main():
 
     args.device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    g = add_encodings(g, args.pos_enc_dim, type="lap")
+    g = add_encodings(g, int(args.pos_enc_dim), type="lap")
     print("[!] Added positional encodings")
     run_single_graph_batched(args, g, train_idx, valid_idx, test_idx)
 

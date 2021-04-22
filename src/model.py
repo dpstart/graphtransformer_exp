@@ -13,8 +13,8 @@ class GraphTransformer(nn.Module):
         super().__init__()
 
         in_dim_node = args.in_dim
-        hidden_dim = args.hidden_dim
-        out_dim = args.out_dim
+        hidden_dim = int(args.hidden_dim)
+        out_dim = int(args.out_dim)
         num_classes = args.num_classes
         num_heads = args.num_heads
         in_feat_dropout = args.in_feat_dropout
