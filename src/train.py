@@ -20,12 +20,12 @@ def train_iter_batched(
 
     model.train()
 
-    # x = blocks[0].srcdata["feat"]
-    # lap_pos_enc = blocks[0].srcdata["lap_pos_enc"]
-    # labels = blocks[-1].dstdata["label"]
-
     x = g.ndata["feat"].to(device)
     lap_pos_enc = g.ndata["lap_pos_enc"].to(device)
+    sign_flip = torch.rand(lap_pos_enc.size(1)).to(device)
+    sign_flip[sign_flip >= 0.5] = 1.0
+    sign_flip[sign_flip < 0.5] = -1.0
+    lap_pos_enc = lap_pos_enc * sign_flip.unsqueeze(0)
     labels = blocks[-1].dstdata["label"]
 
     optimizer.zero_grad()
@@ -46,12 +46,12 @@ def evaluate_batched(model, g, input_nodes, output_nodes, blocks, device):
 
     model.eval()
 
-    # x = blocks[0].srcdata["feat"]
-    # lap_pos_enc = blocks[0].srcdata["lap_pos_enc"]
-    # labels = blocks[-1].dstdata["label"]
-
     x = g.ndata["feat"].to(device)
     lap_pos_enc = g.ndata["lap_pos_enc"].to(device)
+    sign_flip = torch.rand(lap_pos_enc.size(1)).to(device)
+    sign_flip[sign_flip >= 0.5] = 1.0
+    sign_flip[sign_flip < 0.5] = -1.0
+    lap_pos_enc = lap_pos_enc * sign_flip.unsqueeze(0)
 
     labels = blocks[-1].dstdata["label"]
 
