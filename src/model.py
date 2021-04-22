@@ -15,10 +15,10 @@ class GraphTransformer(nn.Module):
         in_dim_node = args.in_dim
         hidden_dim = int(args.hidden_dim)
         out_dim = int(args.out_dim)
-        num_classes = args.num_classes
-        num_heads = args.num_heads
-        in_feat_dropout = args.in_feat_dropout
-        dropout = args.dropout
+        num_classes = int(args.num_classes)
+        num_heads = int(args.num_heads)
+        in_feat_dropout = float(args.in_feat_dropout)
+        dropout = float(args.dropout)
 
         ## The number of layers should match the number of blocks provided in the `forward` method
         num_layers = 2
