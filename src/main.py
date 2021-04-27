@@ -12,6 +12,12 @@ from train import train_iter_batched, evaluate_batched
 from args import parse_args
 
 
+def init_weights(m):
+    if type(m) == nn.Linear:
+        torch.nn.init.xavier_uniform(m.weight)
+        m.bias.data.fill_(0.01)
+
+
 def add_encodings(g, dim, type="lap"):
 
     if type == "lap":
@@ -82,6 +88,7 @@ def run_single_graph_batched(g, args, *idx):
     train_dataloader, val_dataloader, test_dataloader = get_dataloaders(g, args, *idx)
 
     model = GraphTransformer(args)
+    model.apply(init_weights)
     print(f"[!] No. of params: {sum(p.numel() for p in model.parameters())}")
 
     optimizer = torch.optim.Adam(
