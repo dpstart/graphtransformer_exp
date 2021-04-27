@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 from scipy import sparse as sp
 import numpy as np
 
@@ -10,6 +11,10 @@ from ogb.nodeproppred import DglNodePropPredDataset
 from model import GraphTransformer
 from train import train_iter_batched, evaluate_batched
 from args import parse_args
+
+torch.manual_seed(0)
+torch.cuda.manual_seed(0)
+np.random.seed(0)
 
 
 def init_weights(m):

@@ -12,6 +12,10 @@ from model import GraphTransformer
 from train import train_iter
 from args import parse_args
 
+torch.manual_seed(0)
+torch.cuda.manual_seed(0)
+np.random.seed(0)
+
 
 def init_weights(m):
     if type(m) == nn.Linear:
