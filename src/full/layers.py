@@ -26,23 +26,12 @@ def scaled_exp(field, scale_constant):
 
 
 class MLPReadout(nn.Module):
-    def __init__(self, input_dim, output_dim, L=1):  # L=n_hidden_layers
+    def __init__(self, input_dim, output_dim):
         super().__init__()
-        list_FC_layers = [
-            nn.Linear(input_dim // 2 ** l, input_dim // 2 ** (l + 1), bias=True)
-            for l in range(L)
-        ]
-        list_FC_layers.append(nn.Linear(input_dim // 2 ** L, output_dim, bias=True))
-        self.FC_layers = nn.ModuleList(list_FC_layers)
-        self.L = L
+        self.mlp = nn.Linear(input_dim, output_dim)
 
     def forward(self, x):
-        y = x
-        for l in range(self.L):
-            y = self.FC_layers[l](y)
-            y = F.relu(y)
-        y = self.FC_layers[self.L](y)
-        return y
+        return self.mlp(x)
 
 
 class MultiHeadAttention(nn.Module):
@@ -51,9 +40,9 @@ class MultiHeadAttention(nn.Module):
         self.out_dim = out_dim
         self.num_heads = num_heads
 
-        self.Q = nn.Linear(in_dim, out_dim * num_heads, bias=False)
-        self.K = nn.Linear(in_dim, out_dim * num_heads, bias=False)
-        self.V = nn.Linear(in_dim, out_dim * num_heads, bias=False)
+        self.Q = nn.Linear(in_dim, out_dim * num_heads)
+        self.K = nn.Linear(in_dim, out_dim * num_heads)
+        self.V = nn.Linear(in_dim, out_dim * num_heads)
 
     def propagate(self, g):
 
@@ -116,18 +105,18 @@ class GraphTransformerLayer(nn.Module):
         attn_out = self.attention(g, x)
         h = attn_out.view(-1, self.out_channels)
         h = F.dropout(h, self.dropout, training=self.training)
-        h = self.O(h)
+        # h = self.O(h)
 
-        # Residual connection
+        # # Residual connection
         h = h_in1 + h
-        self.batch_norm1(h)
-        h_in2 = h
+        # h = self.batch_norm1(h)
+        # h_in2 = h
 
-        h = self.FFN_layer1(h)
-        h = F.relu(h)
-        h = F.dropout(h, self.dropout, training=self.training)
-        h = self.FFN_layer2(h)
-        h = h_in2 + h
-        h = self.batch_norm2(h)
+        # h = self.FFN_layer1(h)
+        # h = F.relu(h)
+        # h = F.dropout(h, self.dropout, training=self.training)
+        # h = self.FFN_layer2(h)
+        # h = h_in2 + h
+        # h = self.batch_norm2(h)
 
         return h

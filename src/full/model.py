@@ -30,9 +30,9 @@ class GraphTransformer(nn.Module):
 
         self.layers = []
 
-        self.embedding_lap_pos_enc = nn.Linear(pos_enc_dim, hidden_dim)
+        self.embedding_enc = nn.Linear(pos_enc_dim, hidden_dim)
         self.embedding_h = nn.Linear(in_dim_node, hidden_dim)
-        self.in_feat_dropout = nn.Dropout(in_feat_dropout)
+        self.dropout = nn.Dropout(dropout)
 
         self.layers = nn.ModuleList(
             [
@@ -45,14 +45,14 @@ class GraphTransformer(nn.Module):
         )
         self.mlp = MLPReadout(out_dim, num_classes)
 
-    def forward(self, g, x, x_lap_pos_enc):
+    def forward(self, g, x, x_enc):
         # TODO add in feat dropout
 
         h = self.embedding_h(x)
-        h_lap_pos_enc = self.embedding_lap_pos_enc(x_lap_pos_enc)
-        h = h + h_lap_pos_enc
+        h_enc = self.embedding_enc(x_enc)
+        h = h + h_enc
 
-        h = F.dropout(h, self.dropout, training=self.training)
+        h = self.dropout(h)
 
         # Iterate through transformer layers
         for i, layer in enumerate(self.layers):
