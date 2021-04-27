@@ -13,6 +13,12 @@ from train import train_iter
 from args import parse_args
 
 
+def init_weights(m):
+    if type(m) == nn.Linear:
+        torch.nn.init.xavier_uniform(m.weight)
+        m.bias.data.fill_(0.01)
+
+
 def accuracy(scores, targets):
     scores = scores.argmax(dim=1)
     acc = (scores == targets.squeeze()).sum()
@@ -59,6 +65,7 @@ def run_single_graph(g, args, *idx):
     train_idx, val_idx, test_idx = idx
 
     model = GraphTransformer(args).to(args.device)
+    model.apply(init_weights)
     print(f"[!] No. of params: {sum(p.numel() for p in model.parameters())}")
 
     optimizer = torch.optim.Adam(

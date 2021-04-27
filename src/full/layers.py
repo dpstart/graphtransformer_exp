@@ -91,32 +91,13 @@ class GraphTransformerLayer(nn.Module):
         self.dropout = dropout
 
         self.attention = MultiHeadAttention(in_dim, out_dim // num_heads, num_heads)
-        self.O = nn.Linear(out_dim, out_dim)
-        self.batch_norm1 = nn.BatchNorm1d(out_dim)
-
-        self.FFN_layer1 = nn.Linear(out_dim, out_dim * 2)
-        self.FFN_layer2 = nn.Linear(out_dim * 2, out_dim)
-        self.batch_norm2 = nn.BatchNorm1d(out_dim)
 
     def forward(self, g, x):
 
         h_in1 = x
-
         attn_out = self.attention(g, x)
         h = attn_out.view(-1, self.out_channels)
         h = F.dropout(h, self.dropout, training=self.training)
-        # h = self.O(h)
-
-        # # Residual connection
         h = h_in1 + h
-        # h = self.batch_norm1(h)
-        # h_in2 = h
-
-        # h = self.FFN_layer1(h)
-        # h = F.relu(h)
-        # h = F.dropout(h, self.dropout, training=self.training)
-        # h = self.FFN_layer2(h)
-        # h = h_in2 + h
-        # h = self.batch_norm2(h)
 
         return h

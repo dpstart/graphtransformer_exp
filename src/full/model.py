@@ -43,6 +43,7 @@ class GraphTransformer(nn.Module):
         self.layers.append(
             GraphTransformerLayer(hidden_dim, out_dim, num_heads, dropout)
         )
+
         self.mlp = MLPReadout(out_dim, num_classes)
 
     def forward(self, g, x, x_enc):

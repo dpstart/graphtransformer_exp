@@ -87,7 +87,7 @@ class MultiHeadAttention(nn.Module):
         g.srcdata["V_h"] = V_h.view(-1, self.num_heads, self.out_dim)
 
         self.propagate(g)
-        out = g.dstdata["wV"]
+        out = g.dstdata["wV"] / g.dstdata["z"]
         return out
 
 
