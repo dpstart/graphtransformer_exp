@@ -19,8 +19,8 @@ np.random.seed(0)
 
 def init_weights(m):
     if type(m) == nn.Linear:
-        torch.nn.init.xavier_uniform(m.weight)
-        m.bias.data.fill_(0.01)
+        torch.nn.init.xavier_uniform_(m.weight)
+        m.bias.data.fill_(0.0)
 
 
 def add_encodings(g, dim, type="lap"):
@@ -114,14 +114,7 @@ def run_single_graph_batched(g, args, *idx):
         for input_nodes, output_nodes, blocks in train_dataloader:
 
             loss, acc, optimizer = train_iter_batched(
-                model,
-                g,
-                input_nodes,
-                output_nodes,
-                blocks,
-                optimizer,
-                args.device,
-                epoch,
+                model, g, input_nodes, output_nodes, blocks, optimizer, args.device
             )
 
             epoch_train_losses.append(loss)
