@@ -14,6 +14,8 @@ from args import parse_args
 from partition_util import get_partition_list
 from sampler import subgraph_collate_fn, ClusterIter
 
+from functools import partial 
+
 torch.manual_seed(0)
 torch.cuda.manual_seed(0)
 np.random.seed(0)
@@ -94,7 +96,7 @@ def run_single_graph(g, args, cluster_iterator, *idx):
             mask = cluster.ndata.pop("train_mask")
             if mask.sum() == 0:
                 continue
-            cluster = cluster.int().to(device)
+            cluster = cluster.int().to(args.device)
             input_nodes = cluster.ndata[dgl.NID]
             batch_inputs = x[input_nodes]
             batch_labels = labels[input_nodes]
@@ -103,12 +105,12 @@ def run_single_graph(g, args, cluster_iterator, *idx):
             model.train()
             optimizer.zero_grad()
 
-            scores = model(cluster, batch_inputs, lap_pos_enc)
+            scores = model(cluster, batch_inputs, batch_lap_pos_enc)
 
-            loss = model.loss(scores[train_idx], labels.squeeze()[train_idx])
+            loss = model.loss(scores, batch_labels.squeeze())
             loss.backward()
             optimizer.step()
-            acc = accuracy(scores.detach()[train_idx], labels.detach()[train_idx])
+            acc = accuracy(scores.detach(), batch_labels)
 
             train_losses.append(loss.detach().item())
             train_accs.append(acc)
@@ -152,6 +154,14 @@ def main():
         )
         g, label = dataset[0]
         g.ndata["label"] = label
+        
+
+        g.ndata["train_mask"] = torch.zeros(g.ndata["feat"].shape[0])
+        g.ndata["train_mask"][train_idx] = 1
+        
+        
+        #g.ndata["val_mask"] = torch.zeros(g.ndata["feat"].shape[0])
+        #g.ndata["val_mask"][valid_idx] = 1
 
         args.num_classes = (np.amax(g.ndata["label"].numpy(), axis=0) + 1)[0]
 
@@ -192,7 +202,7 @@ def main():
 
     ###### CLUSTERING STUFF
 
-    num_partitions = 150
+    num_partitions = 10000
 
     cluster_iter_data = ClusterIter(args.dataset, g, num_partitions, args.batch_size)
     cluster_iterator = torch.utils.data.DataLoader(
