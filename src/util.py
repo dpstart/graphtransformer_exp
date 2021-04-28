@@ -21,7 +21,6 @@ def get_dataloaders(g, args, *idx):
     train_idx, valid_idx, test_idx = idx
 
     sampler = dgl.dataloading.MultiLayerFullNeighborSampler(args.num_layers)
-    sampler = dgl.dataloading.MultiLayerNeighborSampler([5, 25])
     train_dataloader = dgl.dataloading.NodeDataLoader(
         g,
         train_idx,
