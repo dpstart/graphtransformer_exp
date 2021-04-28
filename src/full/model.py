@@ -44,6 +44,8 @@ class GraphTransformer(nn.Module):
             GraphTransformerLayer(hidden_dim, out_dim, num_heads, dropout)
         )
 
+        self.layers[-2] = self.layers[-1]
+
         self.mlp = MLPReadout(out_dim, num_classes)
 
     def forward(self, g, x, x_enc):
