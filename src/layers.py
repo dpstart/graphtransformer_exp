@@ -77,9 +77,9 @@ class MultiHeadAttention(nn.Module):
         self.out_dim = out_dim
         self.num_heads = num_heads
 
-        self.Q = nn.Linear(in_dim, out_dim * num_heads, bias=True)
-        self.K = nn.Linear(in_dim, out_dim * num_heads, bias=True)
-        self.V = nn.Linear(in_dim, out_dim * num_heads, bias=True)
+        self.Q = nn.Linear(in_dim, out_dim * num_heads)
+        self.K = nn.Linear(in_dim, out_dim * num_heads)
+        self.V = nn.Linear(in_dim, out_dim * num_heads)
 
     def propagate(self, g):
 
