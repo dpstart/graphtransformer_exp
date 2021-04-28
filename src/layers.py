@@ -39,7 +39,7 @@ class SubLayerWrapper(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x, sublayer):
-        return x + self.dropout(sublayer(self.norm(F.relu(x))))
+        return x + self.dropout(F.relu(sublayer(self.norm(x))))
 
 
 class MLPReadout(nn.Module):
@@ -118,6 +118,8 @@ class GraphTransformerLayer(nn.Module):
         self.num_heads = num_heads
         self.dropout = dropout
 
+        self.norm = LayerNorm(out_dim)
+
         self.attention = MultiHeadAttention(in_dim, out_dim // num_heads, num_heads)
         self.O = nn.Linear(out_dim, out_dim)
         self.sublayer = SubLayerWrapper(out_dim, dropout)
@@ -131,6 +133,14 @@ class GraphTransformerLayer(nn.Module):
         attn_out = self.attention(g, x_src, x_dst)
 
         # h: (dst_nodes, num_features)
-        h = attn_out.view(-1, self.out_channels) + h_in1
+        h = h_in1 + (
+            F.dropout(
+                attn_out.view(-1, self.out_channels),
+                self.dropout,
+                training=self.training,
+            )
+        )
+
+        h = self.norm(h)
         h = self.sublayer(h, self.O)
         return h
