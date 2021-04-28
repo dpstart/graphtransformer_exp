@@ -39,7 +39,7 @@ class SubLayerWrapper(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, x, sublayer):
-        return x + self.dropout(sublayer(self.norm(x)))
+        return x + self.dropout(sublayer(self.norm(F.relu(x))))
 
 
 class MLPReadout(nn.Module):
@@ -132,6 +132,5 @@ class GraphTransformerLayer(nn.Module):
 
         # h: (dst_nodes, num_features)
         h = attn_out.view(-1, self.out_channels)
-
         h = self.sublayer(h, self.O)
         return h
