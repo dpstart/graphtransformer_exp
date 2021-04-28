@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn import LayerNorm
+
 
 import dgl
 import dgl.function as fn
@@ -23,6 +25,21 @@ def scaled_exp(field, scale_constant):
         return {field: torch.exp((edges.data[field] / scale_constant).clamp(-5, 5))}
 
     return func
+
+
+class SubLayerWrapper(nn.Module):
+    """
+    The module wraps normalization, dropout, residual connection into one equation:
+    sublayerwrapper(sublayer)(x) = x + dropout(sublayer(norm(x)))
+    """
+
+    def __init__(self, size, dropout):
+        super(SubLayerWrapper, self).__init__()
+        self.norm = LayerNorm(size)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x, sublayer):
+        return x + self.dropout(sublayer(self.norm(x)))
 
 
 class MLPReadout(nn.Module):
@@ -100,17 +117,10 @@ class GraphTransformerLayer(nn.Module):
         self.out_channels = out_dim
         self.num_heads = num_heads
         self.dropout = dropout
-        self.small = small
 
         self.attention = MultiHeadAttention(in_dim, out_dim // num_heads, num_heads)
         self.O = nn.Linear(out_dim, out_dim)
-
-        if not self.small:
-            self.batch_norm1 = nn.BatchNorm1d(out_dim)
-
-            self.FFN_layer1 = nn.Linear(out_dim, out_dim * 2)
-            self.FFN_layer2 = nn.Linear(out_dim * 2, out_dim)
-            self.batch_norm2 = nn.BatchNorm1d(out_dim)
+        self.sublayer = SubLayerWrapper(out_dim, dropout)
 
     def forward(self, g, x_src, x_dst):
 
@@ -122,23 +132,6 @@ class GraphTransformerLayer(nn.Module):
 
         # h: (dst_nodes, num_features)
         h = attn_out.view(-1, self.out_channels)
-        h = F.dropout(h, self.dropout, training=self.training)
 
-        # h: (dst_nodes, num_features)
-        h = self.O(h)
-
-        # Residual connection
-        h = h_in1 + h
-
-        if not self.small:
-            self.batch_norm1(h)
-            h_in2 = h
-
-            h = self.FFN_layer1(h)
-            h = F.relu(h)
-            h = F.dropout(h, self.dropout, training=self.training)
-            h = self.FFN_layer2(h)
-            h = h_in2 + h
-            h = self.batch_norm2(h)
-
+        h = self.sublayer(h, self.O)
         return h

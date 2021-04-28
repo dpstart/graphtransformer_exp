@@ -4,7 +4,7 @@ from scipy import sparse as sp
 import numpy as np
 
 import dgl
-from dgl.data import CoraGraphDataset
+from dgl.data import CoraGraphDataset, CiteseerGraphDataset
 
 from ogb.nodeproppred import DglNodePropPredDataset
 
@@ -53,7 +53,9 @@ def run_single_graph_batched(g, args, *idx):
     train_dataloader, val_dataloader, test_dataloader = get_dataloaders(g, args, *idx)
 
     model = GraphTransformer(args)
-    model.apply(init_weights)
+    for p in model.parameters():
+        if p.dim() > 1:
+            torch.nn.init.xavier_uniform_(p)
     print(f"[!] No. of params: {sum(p.numel() for p in model.parameters())}")
 
     optimizer = torch.optim.Adam(
@@ -154,6 +156,17 @@ def main():
         valid_idx = np.nonzero(g.ndata["val_mask"]).squeeze()
         test_idx = np.nonzero(g.ndata["test_mask"]).squeeze()
         args.num_classes = 7
+
+    elif args.dataset == "citeseer":
+
+        dataset = CiteseerGraphDataset()
+        g = dataset[0]
+
+        train_idx = np.nonzero(g.ndata["train_mask"]).squeeze()
+        valid_idx = np.nonzero(g.ndata["val_mask"]).squeeze()
+        test_idx = np.nonzero(g.ndata["test_mask"]).squeeze()
+
+        args.num_classes = 6
 
     elif args.dataset == "products":
         dataset = DglNodePropPredDataset(name="ogbn-products")
