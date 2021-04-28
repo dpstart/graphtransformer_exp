@@ -49,7 +49,7 @@ class GraphTransformer(nn.Module):
 
         # EMBED + DROPOUT
         h = self.embedding_h(x)
-        h = self.in_feat_dropout(h, self.dropout, training=self.training)
+        h = self.in_feat_dropout(h)
 
         # EMBED POSITIONAL ENCODINGS AND ADD
         h_lap_pos_enc = self.embedding_lap_pos_enc(x_lap_pos_enc.float())
