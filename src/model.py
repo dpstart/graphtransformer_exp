@@ -41,7 +41,7 @@ class GraphTransformer(nn.Module):
             ]
         )
         self.layers.append(
-            GraphTransformerLayer(hidden_dim, out_dim, num_heads, dropout)
+            GraphTransformerLayer(hidden_dim, num_classes, num_heads, dropout)
         )
         self.mlp = MLPReadout(out_dim, num_classes)
 
@@ -62,6 +62,7 @@ class GraphTransformer(nn.Module):
             h_src = layer(blocks[i], h_src, h[blocks[i].dstdata["_ID"]])
 
         out = self.mlp(h_src)
+        out = h_src
         return out
 
     def loss(self, pred, label):
