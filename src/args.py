@@ -1,7 +1,7 @@
 import argparse
 
 
-def parse_args():
+def get_parser():
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -71,20 +71,13 @@ def parse_args():
     parser.add_argument(
         "--pos_enc_dim",
         help="Please give a value for pos_enc_dim",
-        default=10,
+        default=20,
         type=int,
     )
-    parser.add_argument(
-        "--lap_pos_enc",
-        help="Please give a value for lap_pos_enc",
-        default=True,
-        type=bool,
-    )
-
     parser.add_argument(
         "--num_workers", help="Please give a value for num-workers", default=4, type=int
     )
     parser.add_argument(
         "--dataset", help="Please give a value for dataset", default="arxiv"
     )
-    return parser.parse_args()
+    return parser

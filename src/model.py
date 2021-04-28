@@ -36,12 +36,14 @@ class GraphTransformer(nn.Module):
 
         self.layers = nn.ModuleList(
             [
-                GraphTransformerLayer(hidden_dim, hidden_dim, num_heads, dropout)
+                GraphTransformerLayer(
+                    hidden_dim, hidden_dim, num_heads, dropout, args.small
+                )
                 for _ in range(num_layers - 1)
             ]
         )
         self.layers.append(
-            GraphTransformerLayer(hidden_dim, out_dim, num_heads, dropout)
+            GraphTransformerLayer(hidden_dim, out_dim, num_heads, dropout, args.small)
         )
         self.mlp = MLPReadout(out_dim, num_classes)
 

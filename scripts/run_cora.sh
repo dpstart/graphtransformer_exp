@@ -1,1 +1,0 @@
-python ../src/main.py --dataset cora --hidden_dim 32 --out_dim 32

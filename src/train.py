@@ -13,6 +13,8 @@ def accuracy(scores, targets):
 
 def random_flip(pos_enc):
 
+    """Randomly flip the sign of the laplacian eigenvector positional encodings"""
+
     sign_flip = torch.rand(pos_enc.size(1))
     sign_flip[sign_flip >= 0.5] = 1.0
     sign_flip[sign_flip < 0.5] = -1.0
@@ -32,12 +34,12 @@ def train_iter_batched(model, g, input_nodes, output_nodes, blocks, optimizer, d
     labels = blocks[-1].dstdata["label"]
 
     optimizer.zero_grad()
-
     scores = model(blocks, x, lap_pos_enc, input_nodes, output_nodes)
 
     loss = model.loss(scores, labels)
     loss.backward()
     optimizer.step()
+
     acc = accuracy(scores, labels)
     return loss.item(), acc, optimizer
 

@@ -10,17 +10,15 @@ from ogb.nodeproppred import DglNodePropPredDataset
 
 from model import GraphTransformer
 from train import train_iter_batched, evaluate_batched
-from args import parse_args
+from args import get_parser
+from util import init_weights, print_args, get_dataloaders
+
+import argparse
+import json
 
 torch.manual_seed(0)
 torch.cuda.manual_seed(0)
 np.random.seed(0)
-
-
-def init_weights(m):
-    if type(m) == nn.Linear:
-        torch.nn.init.xavier_uniform_(m.weight)
-        m.bias.data.fill_(0.0)
 
 
 def add_encodings(g, dim, type="lap"):
@@ -46,44 +44,6 @@ def add_lap_encodings(g, dim):
     eigvec = eigvec[:, eigval.argsort()]
     g.ndata["lap_pos_enc"] = torch.from_numpy(eigvec[:, 1 : dim + 1]).float()
     return g
-
-
-def get_dataloaders(g, args, *idx):
-
-    train_idx, valid_idx, test_idx = idx
-
-    sampler = dgl.dataloading.MultiLayerFullNeighborSampler(args.num_layers)
-    train_dataloader = dgl.dataloading.NodeDataLoader(
-        g,
-        train_idx,
-        sampler,
-        batch_size=args.batch_size,
-        shuffle=True,
-        drop_last=False,
-        num_workers=args.num_workers,
-    )
-
-    val_dataloader = dgl.dataloading.NodeDataLoader(
-        g,
-        valid_idx,
-        sampler,
-        batch_size=args.batch_size,
-        shuffle=True,
-        drop_last=False,
-        num_workers=1,
-    )
-
-    test_dataloader = dgl.dataloading.NodeDataLoader(
-        g,
-        test_idx,
-        sampler,
-        batch_size=args.batch_size,
-        shuffle=True,
-        drop_last=False,
-        num_workers=1,
-    )
-
-    return train_dataloader, val_dataloader, test_dataloader
 
 
 def run_single_graph_batched(g, args, *idx):
@@ -157,7 +117,20 @@ def run_single_graph_batched(g, args, *idx):
 
 def main():
 
-    args = parse_args()
+    parser = get_parser()
+    args = parser.parse_args()
+
+    if args.config:
+        with open(args.config, "rt") as f:
+            t_args = argparse.Namespace()
+            t_args.__dict__.update(json.load(f))
+            args = parser.parse_args(namespace=t_args)
+
+    print_args(args)
+
+    args.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    ###### Load Datasets
 
     if args.dataset == "arxiv":
         dataset = DglNodePropPredDataset(name="ogbn-arxiv")
@@ -202,8 +175,7 @@ def main():
         f"[!] No. of nodes: {g.num_nodes()} | No. of feature dimensions: {args.in_dim} | No. of classes: {args.num_classes}"
     )
 
-    args.device = "cuda" if torch.cuda.is_available() else "cpu"
-
+    #### Add Positional Encodings
     g = add_encodings(g, int(args.pos_enc_dim), type="lap")
     print("[!] Added positional encodings")
     run_single_graph_batched(g, args, train_idx, valid_idx, test_idx)
