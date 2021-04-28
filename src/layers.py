@@ -131,6 +131,6 @@ class GraphTransformerLayer(nn.Module):
         attn_out = self.attention(g, x_src, x_dst)
 
         # h: (dst_nodes, num_features)
-        h = attn_out.view(-1, self.out_channels)
+        h = attn_out.view(-1, self.out_channels) + h_in1
         h = self.sublayer(h, self.O)
         return h
