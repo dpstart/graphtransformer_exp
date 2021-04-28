@@ -62,6 +62,15 @@ class MLPReadout(nn.Module):
         return y
 
 
+class MLPReadout(nn.Module):
+    def __init__(self, input_dim, output_dim):  # L=n_hidden_layers
+        super().__init__()
+        self.l = nn.Linear(input_dim, output_dim)
+
+    def forward(self, x):
+        return self.l(x)
+
+
 class MultiHeadAttention(nn.Module):
     def __init__(self, in_dim, out_dim, num_heads):
         super().__init__()
