@@ -11,6 +11,8 @@ from ogb.nodeproppred import DglNodePropPredDataset
 from model import GraphTransformer
 from train import train_iter
 from args import parse_args
+from partition_util import get_partition_list
+from sampler import subgraph_collate_fn, ClusterIter
 
 torch.manual_seed(0)
 torch.cuda.manual_seed(0)
@@ -62,7 +64,7 @@ def flip(lap_pos_enc):
     return lap_pos_enc * sign_flip.unsqueeze(0)
 
 
-def run_single_graph(g, args, *idx):
+def run_single_graph(g, args, cluster_iterator, *idx):
     """Run training on a single graph.
     """
 
@@ -87,19 +89,29 @@ def run_single_graph(g, args, *idx):
     for epoch in range(args.epochs):
 
         g = g_.to(args.device)
+        for step, cluster in enumerate(cluster_iterator):
 
-        model.train()
-        optimizer.zero_grad()
+            mask = cluster.ndata.pop("train_mask")
+            if mask.sum() == 0:
+                continue
+            cluster = cluster.int().to(device)
+            input_nodes = cluster.ndata[dgl.NID]
+            batch_inputs = x[input_nodes]
+            batch_labels = labels[input_nodes]
+            batch_lap_pos_enc = lap_pos_enc[input_nodes]
 
-        scores = model(g, x, lap_pos_enc)
+            model.train()
+            optimizer.zero_grad()
 
-        loss = model.loss(scores[train_idx], labels.squeeze()[train_idx])
-        loss.backward()
-        optimizer.step()
-        acc = accuracy(scores.detach()[train_idx], labels.detach()[train_idx])
+            scores = model(cluster, batch_inputs, lap_pos_enc)
 
-        train_losses.append(loss.detach().item())
-        train_accs.append(acc)
+            loss = model.loss(scores[train_idx], labels.squeeze()[train_idx])
+            loss.backward()
+            optimizer.step()
+            acc = accuracy(scores.detach()[train_idx], labels.detach()[train_idx])
+
+            train_losses.append(loss.detach().item())
+            train_accs.append(acc)
         print(f"Epoch: {epoch} | Train Loss: {loss:.4f} | Train Acc: {acc:.4f}")
 
         if epoch % args.val_interval == 0:
@@ -178,7 +190,21 @@ def main():
     g = add_encodings(g, int(args.pos_enc_dim), type="lap")
     print("[!] Added positional encodings")
 
-    run_single_graph(g, args, train_idx, valid_idx, test_idx)
+    ###### CLUSTERING STUFF
+
+    num_partitions = 150
+
+    cluster_iter_data = ClusterIter(args.dataset, g, num_partitions, args.batch_size)
+    cluster_iterator = torch.utils.data.DataLoader(
+        cluster_iter_data,
+        batch_size=args.batch_size,
+        shuffle=True,
+        pin_memory=True,
+        num_workers=4,
+        collate_fn=partial(subgraph_collate_fn, g),
+    )
+
+    run_single_graph(g, args, cluster_iterator, train_idx, valid_idx, test_idx)
 
 
 if __name__ == "__main__":
