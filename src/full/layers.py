@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn import LayerNorm
+
 
 import dgl
 import dgl.function as fn
@@ -32,6 +34,21 @@ class MLPReadout(nn.Module):
 
     def forward(self, x):
         return self.mlp(x)
+
+
+class SubLayerWrapper(nn.Module):
+    """
+    The module wraps normalization, dropout, residual connection into one equation:
+    sublayerwrapper(sublayer)(x) = x + dropout(sublayer(norm(x)))
+    """
+
+    def __init__(self, size, dropout):
+        super(SubLayerWrapper, self).__init__()
+        self.norm = LayerNorm(size)
+        self.dropout = nn.Dropout(dropout)
+
+    def forward(self, x, sublayer):
+        return x + self.dropout(F.relu(sublayer(self.norm(x))))
 
 
 class MultiHeadAttention(nn.Module):
@@ -76,7 +93,7 @@ class MultiHeadAttention(nn.Module):
         g.ndata["V_h"] = V_h.view(-1, self.num_heads, self.out_dim)
 
         self.propagate(g)
-        out = g.ndata["wV"] #/ g.ndata["z"]
+        out = g.ndata["wV"]  # / g.ndata["z"]
         return out
 
 
@@ -91,13 +108,23 @@ class GraphTransformerLayer(nn.Module):
         self.dropout = dropout
 
         self.attention = MultiHeadAttention(in_dim, out_dim // num_heads, num_heads)
+        self.O = nn.Linear(out_dim, out_dim)
+        self.sublayer = SubLayerWrapper(out_dim, dropout)
 
     def forward(self, g, x):
 
         h_in1 = x
         attn_out = self.attention(g, x)
-        h = attn_out.view(-1, self.out_channels)
-        h = F.dropout(h, self.dropout, training=self.training)
-        h = h_in1 + h
+
+        h = h_in1 + (
+            F.dropout(
+                attn_out.view(-1, self.out_channels),
+                self.dropout,
+                training=self.training,
+            )
+        )
+
+        h = self.norm(h)
+        h = self.sublayer(h, self.O)
 
         return h
