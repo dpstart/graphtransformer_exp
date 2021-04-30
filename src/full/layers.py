@@ -107,6 +107,8 @@ class GraphTransformerLayer(nn.Module):
         self.num_heads = num_heads
         self.dropout = dropout
 
+        self.norm = LayerNorm(out_dim)
+
         self.attention = MultiHeadAttention(in_dim, out_dim // num_heads, num_heads)
         self.O = nn.Linear(out_dim, out_dim)
         self.sublayer = SubLayerWrapper(out_dim, dropout)
