@@ -4,7 +4,7 @@ from scipy import sparse as sp
 import numpy as np
 
 import dgl
-from dgl.data import CoraGraphDataset, CiteseerGraphDataset
+from dgl.data import CoraGraphDataset, CiteseerGraphDataset, RedditDataset
 
 from ogb.nodeproppred import DglNodePropPredDataset
 
@@ -172,7 +172,7 @@ def main():
         valid_idx = np.nonzero(g.ndata["val_mask"]).squeeze()
         test_idx = np.nonzero(g.ndata["test_mask"]).squeeze()
         args.num_classes = 7
-    
+
     elif args.dataset == "citeseer":
 
         dataset = CiteseerGraphDataset()
@@ -183,6 +183,15 @@ def main():
         test_idx = np.nonzero(g.ndata["test_mask"]).squeeze()
         args.num_classes = 6
 
+    elif args.dataset == "reddit":
+
+        dataset = RedditDataset()
+        g = dataset[0]
+
+        train_idx = np.nonzero(g.ndata["train_mask"]).squeeze()
+        valid_idx = np.nonzero(g.ndata["val_mask"]).squeeze()
+        test_idx = np.nonzero(g.ndata["test_mask"]).squeeze()
+        args.num_classes = 50
 
     elif args.dataset == "products":
         dataset = DglNodePropPredDataset(name="ogbn-products")
