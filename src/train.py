@@ -34,7 +34,7 @@ def train_iter_batched(model, g, input_nodes, output_nodes, blocks, optimizer, d
     labels = blocks[-1].dstdata["label"]
 
     optimizer.zero_grad()
-    scores = model(blocks, x, lap_pos_enc, input_nodes, output_nodes)
+    scores = model.forward_bidirected(blocks, x, lap_pos_enc, input_nodes, output_nodes)
 
     loss = model.loss(scores, labels)
     loss.backward()
@@ -57,7 +57,9 @@ def evaluate_batched(model, g, input_nodes, output_nodes, blocks, device):
         lap_pos_enc = random_flip(g.ndata["lap_pos_enc"]).to(device)
         labels = blocks[-1].dstdata["label"]
 
-        scores = model(blocks, x, lap_pos_enc, input_nodes, output_nodes)
+        scores = model.forward_bidirected(
+            blocks, x, lap_pos_enc, input_nodes, output_nodes
+        )
         loss = model.loss(scores, labels)
         acc = accuracy(scores, labels)
     return loss.item(), acc

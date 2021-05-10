@@ -109,7 +109,7 @@ def run_single_graph(g, args, cluster_iterator, *idx):
             model.train()
             optimizer.zero_grad()
 
-            scores = model(cluster, batch_inputs, batch_lap_pos_enc)
+            scores = model.forward(cluster, batch_inputs, batch_lap_pos_enc)
 
             loss = model.loss(scores, batch_labels.squeeze())
             loss.backward()
