@@ -148,6 +148,7 @@ def run_single_graph(g, args, cluster_iterator, *idx):
 def main():
 
     args = parse_args()
+    args.blocks = False
 
     if args.dataset == "arxiv":
         dataset = DglNodePropPredDataset(name="ogbn-arxiv")
@@ -162,9 +163,6 @@ def main():
 
         g.ndata["train_mask"] = torch.zeros(g.ndata["feat"].shape[0])
         g.ndata["train_mask"][train_idx] = 1
-
-        # g.ndata["val_mask"] = torch.zeros(g.ndata["feat"].shape[0])
-        # g.ndata["val_mask"][valid_idx] = 1
 
         args.num_classes = (np.amax(g.ndata["label"].numpy(), axis=0) + 1)[0]
 

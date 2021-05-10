@@ -20,6 +20,7 @@ class GraphTransformer(nn.Module):
         in_feat_dropout = args.in_feat_dropout
         dropout = args.dropout
         pos_enc_dim = args.pos_enc_dim
+        blocks = args.blocks
 
         num_layers = args.num_layers
 
@@ -36,16 +37,20 @@ class GraphTransformer(nn.Module):
 
         self.layers = nn.ModuleList(
             [
-                GraphTransformerLayer(hidden_dim, hidden_dim, num_heads, dropout)
+                GraphTransformerLayer(
+                    hidden_dim, hidden_dim, num_heads, dropout, blocks=blocks
+                )
                 for _ in range(num_layers - 1)
             ]
         )
         self.layers.append(
-            GraphTransformerLayer(hidden_dim, out_dim, num_heads, dropout)
+            GraphTransformerLayer(
+                hidden_dim, out_dim, num_heads, dropout, blocks=blocks
+            )
         )
         self.mlp = MLPReadout(out_dim, num_classes)
 
-    def forward(self, blocks, x, x_lap_pos_enc, src_nodes, dst_nodes):
+    def forward_bidirected(self, blocks, x, x_lap_pos_enc, src_nodes, dst_nodes):
 
         # EMBED + DROPOUT
         h = self.embedding_h(x)
@@ -62,6 +67,22 @@ class GraphTransformer(nn.Module):
             h_src = layer(blocks[i], h_src, h[blocks[i].dstdata["_ID"]])
 
         out = self.mlp(h_src)
+        return out
+
+    def forward(self, g, x, x_enc):
+        # TODO add in feat dropout
+
+        h = self.embedding_h(x)
+        h_enc = self.embedding_enc(x_enc)
+        h = h + h_enc
+
+        h = self.dropout(h)
+
+        # Iterate through transformer layers
+        for i, layer in enumerate(self.layers):
+            h = layer(g, h)
+
+        out = self.mlp(h)
         return out
 
     def loss(self, pred, label):
