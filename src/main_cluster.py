@@ -102,9 +102,9 @@ def run_single_graph(g, args, cluster_iterator, *idx):
                 continue
             cluster = cluster.int().to(args.device)
             input_nodes = cluster.ndata[dgl.NID]
-            batch_inputs = x[input_nodes].to(device)
-            batch_labels = labels[input_nodes].to(device)
-            batch_lap_pos_enc = lap_pos_enc[input_nodes].to(device)
+            batch_inputs = x[input_nodes].to(args.device)
+            batch_labels = labels[input_nodes].to(args.device)
+            batch_lap_pos_enc = lap_pos_enc[input_nodes].to(args.device)
 
             model.train()
             optimizer.zero_grad()
