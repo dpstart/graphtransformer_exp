@@ -56,6 +56,8 @@ def inference(model, g, batch_size, device):
         block = blocks[0].int().to(device)
         x = x[input_nodes].to(device)
         enc = enc[input_nodes].to(device)
+
+        block = dgl.to_homogeneous(block, ndata=["feat", "lap_pos_enc"])
         out = model.forward(block, x, enc)
 
         y[output_nodes] = out.cpu()
