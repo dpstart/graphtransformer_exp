@@ -49,7 +49,7 @@ def inference(model, g, batch_size, device):
         batch_size=batch_size,
         shuffle=False,
         drop_last=False,
-        num_workers=args.num_workers,
+        num_workers=-1,
     )
 
     for input_nodes, output_nodes, blocks in tqdm.tqdm(dataloader):
