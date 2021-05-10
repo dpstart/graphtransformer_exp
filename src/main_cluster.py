@@ -170,7 +170,9 @@ def run_single_graph(g, args, cluster_iterator, *idx):
                 scores = model.forward(
                     g, x.to(args.device), lap_pos_enc.to(args.device)
                 )
-                loss = model.loss(scores[val_idx], labels.squeeze()[val_idx])
+                loss = model.loss(
+                    scores[val_idx], labels.to(args.device).squeeze()[val_idx]
+                )
 
             acc = accuracy(scores[val_idx], labels[val_idx])
 
@@ -182,7 +184,7 @@ def run_single_graph(g, args, cluster_iterator, *idx):
     with torch.no_grad():
         # scores = inference(model, g, 128, args.device)
         scores = model.forward(g, x.to(args.device), lap_pos_enc.to(args.device))
-        loss = model.loss(scores[test_idx], labels.squeeze()[test_idx])
+        loss = model.loss(scores[test_idx], labels.to(args.device).squeeze()[test_idx])
 
     acc = accuracy(scores[test_idx], labels[test_idx])
 
