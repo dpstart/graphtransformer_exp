@@ -53,6 +53,7 @@ def inference(model, g, batch_size, device):
     )
 
     for input_nodes, output_nodes, blocks in tqdm.tqdm(dataloader):
+
         block = blocks[0].int().to(device)
         x = x[input_nodes].to(device)
         enc = enc[input_nodes].to(device)
@@ -133,7 +134,7 @@ def run_single_graph(g, args, cluster_iterator, *idx):
 
     for epoch in range(args.epochs):
 
-        # g = g_.to(args.device)
+        g = g_.to(args.device)
         for step, cluster in enumerate(cluster_iterator):
 
             mask = cluster.ndata.pop("train_mask")
@@ -165,7 +166,10 @@ def run_single_graph(g, args, cluster_iterator, *idx):
 
             with torch.no_grad():
 
-                scores = inference(model, g, 128, args.device)
+                # scores = inference(model, g, 128, args.device)
+                scores = model.forward(
+                    g, x.to(args.device), lap_pos_enc.to(args.device)
+                )
                 loss = model.loss(scores[val_idx], labels.squeeze()[val_idx])
 
             acc = accuracy(scores[val_idx], labels[val_idx])
@@ -176,7 +180,8 @@ def run_single_graph(g, args, cluster_iterator, *idx):
     model.eval()
 
     with torch.no_grad():
-        scores = inference(model, g, 128, args.device)
+        # scores = inference(model, g, 128, args.device)
+        scores = model.forward(g, x.to(args.device), lap_pos_enc.to(args.device))
         loss = model.loss(scores[test_idx], labels.squeeze()[test_idx])
 
     acc = accuracy(scores[test_idx], labels[test_idx])
