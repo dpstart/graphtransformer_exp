@@ -88,9 +88,9 @@ def run_single_graph(g, args, cluster_iterator, *idx):
     train_accs, val_accs = [], []
 
     g_ = g.clone()
-    x = g.ndata["feat"].to(args.device)
-    lap_pos_enc = flip(g.ndata["lap_pos_enc"]).to(args.device)
-    labels = g.ndata["label"].to(args.device)
+    x = g.ndata["feat"]
+    lap_pos_enc = flip(g.ndata["lap_pos_enc"])
+    labels = g.ndata["label"]
 
     for epoch in range(args.epochs):
 
@@ -102,9 +102,9 @@ def run_single_graph(g, args, cluster_iterator, *idx):
                 continue
             cluster = cluster.int().to(args.device)
             input_nodes = cluster.ndata[dgl.NID]
-            batch_inputs = x[input_nodes]
-            batch_labels = labels[input_nodes]
-            batch_lap_pos_enc = lap_pos_enc[input_nodes]
+            batch_inputs = x[input_nodes].to(device)
+            batch_labels = labels[input_nodes].to(device)
+            batch_lap_pos_enc = lap_pos_enc[input_nodes].to(device)
 
             model.train()
             optimizer.zero_grad()
