@@ -63,7 +63,9 @@ class GraphTransformer(nn.Module):
 
         # Iterate through transformer layers
         for i, layer in enumerate(self.layers):
-            h_src = layer(blocks[i], h_src, h[blocks[i].dstdata["_ID"]])
+            h_src = layer.forward_bidirected(
+                blocks[i], h_src, h[blocks[i].dstdata["_ID"]]
+            )
 
         out = self.mlp(h_src)
         return out
@@ -76,7 +78,7 @@ class GraphTransformer(nn.Module):
         h_enc = self.embedding_enc(x_enc)
         h = h + h_enc
 
-        #h = self.dropout(h)
+        # h = self.dropout(h)
 
         # Iterate through transformer layers
         for i, layer in enumerate(self.layers):
