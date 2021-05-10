@@ -131,7 +131,7 @@ def run_single_graph(g, args, cluster_iterator, *idx):
 
     for epoch in range(args.epochs):
 
-        g = g_.to(args.device)
+        # g = g_.to(args.device)
         for step, cluster in enumerate(cluster_iterator):
 
             mask = cluster.ndata.pop("train_mask")
