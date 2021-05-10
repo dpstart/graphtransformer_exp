@@ -14,8 +14,7 @@ from dgl.data import (
 from ogb.nodeproppred import DglNodePropPredDataset
 
 from model import GraphTransformer
-from train import train_iter
-from args import parse_args
+from args import get_parser
 from partition_util import get_partition_list
 from sampler import subgraph_collate_fn, ClusterIter
 
@@ -147,7 +146,7 @@ def run_single_graph(g, args, cluster_iterator, *idx):
 
 def main():
 
-    args = parse_args()
+    args = get_parser().parse_args()
     args.blocks = False
 
     if args.dataset == "arxiv":

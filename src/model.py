@@ -27,11 +27,10 @@ class GraphTransformer(nn.Module):
         self.dropout = dropout
         self.num_classes = num_classes
         self.device = args.device
-        self.lap_pos_enc = args.lap_pos_enc
 
         self.layers = []
 
-        self.embedding_lap_pos_enc = nn.Linear(pos_enc_dim, hidden_dim)
+        self.embedding_enc = nn.Linear(pos_enc_dim, hidden_dim)
         self.embedding_h = nn.Linear(in_dim_node, hidden_dim)
         self.in_feat_dropout = nn.Dropout(in_feat_dropout)
 
@@ -57,7 +56,7 @@ class GraphTransformer(nn.Module):
         h = self.in_feat_dropout(h)
 
         # EMBED POSITIONAL ENCODINGS AND ADD
-        h_lap_pos_enc = self.embedding_lap_pos_enc(x_lap_pos_enc.float())
+        h_lap_pos_enc = self.embedding_enc(x_lap_pos_enc.float())
         h = h + h_lap_pos_enc
 
         h_src = h[blocks[0].srcdata["_ID"]]
@@ -73,10 +72,11 @@ class GraphTransformer(nn.Module):
         # TODO add in feat dropout
 
         h = self.embedding_h(x)
+        h = self.in_feat_dropout(h)
         h_enc = self.embedding_enc(x_enc)
         h = h + h_enc
 
-        h = self.dropout(h)
+        #h = self.dropout(h)
 
         # Iterate through transformer layers
         for i, layer in enumerate(self.layers):
