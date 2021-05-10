@@ -125,10 +125,12 @@ def run_single_graph(g, args, cluster_iterator, *idx):
             model.eval()
 
             with torch.no_grad():
-                scores = model.forward(g, x, lap_pos_enc)
-                loss = model.loss(scores[val_idx], labels.squeeze()[val_idx])
+                scores = model.forward(
+                    g, x[val_idx].to(args.device), lap_pos_enc[val_idx].to(args.device)
+                )
+                loss = model.loss(scores, labels.squeeze()[val_idx])
 
-            acc = accuracy(scores[val_idx], labels[val_idx])
+            acc = accuracy(scores, labels[val_idx])
 
             print(f"Epoch: {epoch} | Val Loss: {loss:.4f} | Val Acc: {acc:.4f}")
 
