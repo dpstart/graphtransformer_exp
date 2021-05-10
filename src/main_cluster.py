@@ -20,9 +20,46 @@ from sampler import subgraph_collate_fn, ClusterIter
 
 from functools import partial
 
+import tqdm
+
 torch.manual_seed(0)
 torch.cuda.manual_seed(0)
 np.random.seed(0)
+
+
+def inference(model, g, batch_size, device):
+    """
+    Inference with the GAT model on full neighbors (i.e. without neighbor sampling).
+    g : the entire graph.
+    x : the input of entire node set.
+    The inference code is written in a fashion that it could handle any number of nodes and
+    layers.
+    """
+
+    y = torch.zeros(g.num_nodes(), 1)
+
+    x = g.ndata["feat"]
+    enc = flip(g.ndata["lap_pos_enc"])
+
+    sampler = dgl.dataloading.MultiLayerFullNeighborSampler(1)
+    dataloader = dgl.dataloading.NodeDataLoader(
+        g,
+        torch.arange(g.num_nodes()),
+        sampler,
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=False,
+        num_workers=args.num_workers,
+    )
+
+    for input_nodes, output_nodes, blocks in tqdm.tqdm(dataloader):
+        block = blocks[0].int().to(device)
+        x = x[input_nodes].to(device)
+        enc = enc[input_nodes].to(device)
+        out = model.forward(block, x, enc)
+
+        y[output_nodes] = out.cpu()
+    return y
 
 
 def init_weights(m):
@@ -125,12 +162,11 @@ def run_single_graph(g, args, cluster_iterator, *idx):
             model.eval()
 
             with torch.no_grad():
-                scores = model.forward(
-                    g, x[val_idx].to(args.device), lap_pos_enc[val_idx].to(args.device)
-                )
-                loss = model.loss(scores, labels.squeeze()[val_idx])
 
-            acc = accuracy(scores, labels[val_idx])
+                scores = inference(model, g, 128, args.device)
+                loss = model.loss(scores[val_idx], labels.squeeze()[val_idx])
+
+            acc = accuracy(scores[val_idx], labels[val_idx])
 
             print(f"Epoch: {epoch} | Val Loss: {loss:.4f} | Val Acc: {acc:.4f}")
 
@@ -138,7 +174,7 @@ def run_single_graph(g, args, cluster_iterator, *idx):
     model.eval()
 
     with torch.no_grad():
-        scores = model.forward(g, x, lap_pos_enc)
+        scores = inference(model, g, 128, args.device)
         loss = model.loss(scores[test_idx], labels.squeeze()[test_idx])
 
     acc = accuracy(scores[test_idx], labels[test_idx])
