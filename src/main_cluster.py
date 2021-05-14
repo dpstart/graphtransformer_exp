@@ -19,7 +19,7 @@ from partition_util import get_partition_list
 from sampler import subgraph_collate_fn, ClusterIter
 from util import print_args
 
-
+import json
 from functools import partial
 import argparse
 import tqdm
@@ -192,7 +192,8 @@ def run_single_graph(g, args, cluster_iterator, *idx):
 
 def main():
 
-    args = get_parser().parse_args()
+    parser = get_parser()
+    args = parser.parse_args()
     args.blocks = False
 
     if args.config:
