@@ -17,6 +17,8 @@ from model import GraphTransformer
 from args import get_parser
 from partition_util import get_partition_list
 from sampler import subgraph_collate_fn, ClusterIter
+from util import print_args
+
 
 from functools import partial
 
@@ -180,7 +182,6 @@ def run_single_graph(g, args, cluster_iterator, *idx):
     model.eval()
 
     with torch.no_grad():
-        # scores = inference(model, g, 128, args.device)
         scores = model.forward(g, x.to(args.device), lap_pos_enc.to(args.device))
         loss = model.loss(scores[test_idx], labels.squeeze()[test_idx])
 
@@ -193,6 +194,14 @@ def main():
 
     args = get_parser().parse_args()
     args.blocks = False
+
+    if args.config:
+        with open(args.config, "rt") as f:
+            t_args = argparse.Namespace()
+            t_args.__dict__.update(json.load(f))
+            args = parser.parse_args(namespace=t_args)
+
+    print_args(args)
 
     if args.dataset == "arxiv":
         dataset = DglNodePropPredDataset(name="ogbn-arxiv")
