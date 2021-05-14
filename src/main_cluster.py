@@ -129,14 +129,13 @@ def run_single_graph(g, args, cluster_iterator, *idx):
     train_losses, val_losses = [], []
     train_accs, val_accs = [], []
 
-    g_ = g.clone()
     x = g.ndata["feat"]
     lap_pos_enc = flip(g.ndata["lap_pos_enc"])
     labels = g.ndata["label"].to(args.device)
 
     for epoch in range(args.epochs):
 
-        g = g_.to(args.device)
+        g = g.to(args.device)
         for step, cluster in enumerate(cluster_iterator):
 
             mask = cluster.ndata.pop("train_mask")
@@ -165,7 +164,6 @@ def run_single_graph(g, args, cluster_iterator, *idx):
         if epoch % args.val_interval == 0:
 
             model.eval()
-
             with torch.no_grad():
 
                 # scores = inference(model, g, 128, args.device)
