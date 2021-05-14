@@ -194,7 +194,6 @@ def main():
 
     parser = get_parser()
     args = parser.parse_args()
-    args.blocks = False
 
     if args.config:
         with open(args.config, "rt") as f:
