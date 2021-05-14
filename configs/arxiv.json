@@ -15,6 +15,6 @@
   "dropout": 0.0,
   "lap_pos_enc": true,
   "pos_enc_dim": 10,
-  "num_partitons": 1000,
+  "num_partitions": 1000,
   "blocks": false
 }
