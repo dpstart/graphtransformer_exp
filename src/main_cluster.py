@@ -29,9 +29,9 @@ torch.cuda.manual_seed(0)
 np.random.seed(0)
 
 
-def inference(model, g, batch_size, device):
-    """
-    Inference with the GAT model on full neighbors (i.e. without neighbor sampling).
+def inference(model, g, batch_size, idx, device):
+    """ 
+    Inference with the  model on full neighbors (i.e. without neighbor sampling).
     g : the entire graph.
     x : the input of entire node set.
     The inference code is written in a fashion that it could handle any number of nodes and
@@ -46,7 +46,7 @@ def inference(model, g, batch_size, device):
     sampler = dgl.dataloading.MultiLayerFullNeighborSampler(1)
     dataloader = dgl.dataloading.NodeDataLoader(
         g,
-        torch.arange(g.num_nodes()),
+        idx,
         sampler,
         batch_size=batch_size,
         shuffle=False,
@@ -60,8 +60,7 @@ def inference(model, g, batch_size, device):
         x = x[input_nodes].to(device)
         enc = enc[input_nodes].to(device)
 
-        block = dgl.to_homogeneous(block, ndata=["feat", "lap_pos_enc"])
-        out = model.forward(block, x, enc)
+        out = model(block, x, enc)
 
         y[output_nodes] = out.cpu()
     return y
@@ -69,7 +68,7 @@ def inference(model, g, batch_size, device):
 
 def init_weights(m):
     if type(m) == nn.Linear:
-        torch.nn.init.xavier_uniform(m.weight)
+        torch.nn.init.xavier_uniform_(m.weight)
         m.bias.data.fill_(0.01)
 
 
@@ -106,6 +105,8 @@ def add_lap_encodings(g, dim):
 
 
 def flip(lap_pos_enc):
+    """Randomly flip the sign of the laplacian positional encodings
+    """
     sign_flip = torch.rand(lap_pos_enc.size(1))
     sign_flip[sign_flip >= 0.5] = 1.0
     sign_flip[sign_flip < 0.5] = -1.0
@@ -150,12 +151,12 @@ def run_single_graph(g, args, cluster_iterator, *idx):
             model.train()
             optimizer.zero_grad()
 
-            scores = model.forward(cluster, batch_inputs, batch_lap_pos_enc)
+            scores = model(cluster, batch_inputs, batch_lap_pos_enc)
 
-            loss = model.loss(scores, batch_labels.squeeze())
+            loss = model.loss(scores[mask], batch_labels[mask].squeeze())
             loss.backward()
             optimizer.step()
-            acc = accuracy(scores.detach(), batch_labels)
+            acc = accuracy(scores[mask].detach(), batch_labels[mask])
 
             train_losses.append(loss.detach().item())
             train_accs.append(acc)
@@ -166,10 +167,8 @@ def run_single_graph(g, args, cluster_iterator, *idx):
             model.eval()
             with torch.no_grad():
 
-                # scores = inference(model, g, 128, args.device)
-                scores = model.forward(
-                    g, x.to(args.device), lap_pos_enc.to(args.device)
-                )
+                # scores = inference(model, g, 128, val_idx, args.device)
+                scores = model(g, x.to(args.device), lap_pos_enc.to(args.device))
                 loss = model.loss(scores[val_idx], labels.squeeze()[val_idx])
 
             acc = accuracy(scores[val_idx], labels[val_idx])
@@ -180,7 +179,7 @@ def run_single_graph(g, args, cluster_iterator, *idx):
     model.eval()
 
     with torch.no_grad():
-        scores = model.forward(g, x.to(args.device), lap_pos_enc.to(args.device))
+        scores = model(g, x.to(args.device), lap_pos_enc.to(args.device))
         loss = model.loss(scores[test_idx], labels.squeeze()[test_idx])
 
     acc = accuracy(scores[test_idx], labels[test_idx])
