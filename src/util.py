@@ -28,10 +28,10 @@ def edge_homophily(A, labels, ignore_negative=False):
 
 
 def compat_matrix(A, labels):
-    """ c x c compatibility matrix, where c is number of classes
-     H[i,j] is proportion of endpoints that are class j 
-     of edges incident to class i nodes 
-     See Zhu et al. 2020
+    """c x c compatibility matrix, where c is number of classes
+    H[i,j] is proportion of endpoints that are class j
+    of edges incident to class i nodes
+    See Zhu et al. 2020
     """
     c = len(np.unique(labels))
     H = np.zeros((c, c))
@@ -90,13 +90,13 @@ def node_homophily(A, labels):
 
 
 def edge_homophily_edge_idx(edge_idx, labels):
-    """ edge_idx is 2x(number edges) """
+    """edge_idx is 2x(number edges)"""
     edge_index = remove_self_loops(edge_idx)[0]
     return torch.mean((labels[edge_index[0, :]] == labels[edge_index[1, :]]).float())
 
 
 def node_homophily_edge_idx(edge_idx, labels, num_nodes):
-    """ edge_idx is 2 x(number edges) """
+    """edge_idx is 2 x(number edges)"""
     edge_index = remove_self_loops(edge_idx)[0]
     hs = torch.zeros(num_nodes)
     degs = torch.bincount(edge_index[0, :]).float()
@@ -107,12 +107,12 @@ def node_homophily_edge_idx(edge_idx, labels, num_nodes):
 
 def compat_matrix_edge_idx(edge_idx, labels):
     """
-     c x c compatibility matrix, where c is number of classes
-     H[i,j] is proportion of endpoints that are class j 
-     of edges incident to class i nodes 
-     "Generalizing GNNs Beyond Homophily"
-     treats negative labels as unlabeled
-     """
+    c x c compatibility matrix, where c is number of classes
+    H[i,j] is proportion of endpoints that are class j
+    of edges incident to class i nodes
+    "Generalizing GNNs Beyond Homophily"
+    treats negative labels as unlabeled
+    """
     edge_index = remove_self_loops(edge_idx)[0]
     src_node, targ_node = edge_index[0, :], edge_index[1, :]
     labeled_nodes = (labels[src_node] >= 0) * (labels[targ_node] >= 0)
