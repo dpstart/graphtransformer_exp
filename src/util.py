@@ -1,6 +1,8 @@
 import torch
 import dgl
 
+import networkx as nx
+
 
 import numpy as np
 import torch
@@ -9,7 +11,7 @@ from torch_geometric.utils import remove_self_loops
 
 
 def edge_homophily(A, labels, ignore_negative=False):
-    """ gives edge homophily, i.e. proportion of edges that are intra-class
+    """gives edge homophily, i.e. proportion of edges that are intra-class
     compute homophily of classes in labels vector
     See Zhu et al. 2020 "Beyond Homophily ..."
     if ignore_negative = True, then only compute for edges where nodes both have
@@ -26,8 +28,41 @@ def edge_homophily(A, labels, ignore_negative=False):
 
 
 def node_homophily(A, labels):
-    """ average of homophily for each node
+    """average of homophily for each node"""
+    src_node, targ_node = A.nonzero()
+    edge_idx = torch.tensor(
+        np.vstack((src_node, targ_node)), dtype=torch.long
+    ).contiguous()
+    labels = torch.tensor(labels)
+    num_nodes = A.shape[0]
+    return node_homophily_edge_idx(edge_idx, labels, num_nodes)
+
+
+import numpy as np
+import torch
+from torch_scatter import scatter_add
+from torch_geometric.utils import remove_self_loops
+
+
+def edge_homophily(A, labels, ignore_negative=False):
+    """gives edge homophily, i.e. proportion of edges that are intra-class
+    compute homophily of classes in labels vector
+    See Zhu et al. 2020 "Beyond Homophily ..."
+    if ignore_negative = True, then only compute for edges where nodes both have
+        nonnegative class labels (negative class labels are treated as missing
     """
+    src_node, targ_node = A.nonzero()
+    matching = labels[src_node] == labels[targ_node]
+    labeled_mask = (labels[src_node] >= 0) * (labels[targ_node] >= 0)
+    if ignore_negative:
+        edge_hom = np.mean(matching[labeled_mask])
+    else:
+        edge_hom = np.mean(matching)
+    return edge_hom
+
+
+def node_homophily(A, labels):
+    """average of homophily for each node"""
     src_node, targ_node = A.nonzero()
     edge_idx = torch.tensor(
         np.vstack((src_node, targ_node)), dtype=torch.long
@@ -87,3 +122,31 @@ def get_dataloaders(g, args, *idx):
     )
 
     return train_dataloader, val_dataloader, test_dataloader
+
+
+def make_full_graph(g):
+
+    full_g = dgl.from_networkx(nx.complete_graph(g.number_of_nodes()))
+
+    # Here we copy over the node feature data and laplace encodings
+    full_g.ndata["feat"] = g.ndata["feat"]
+
+    try:
+        full_g.ndata["EigVecs"] = g.ndata["EigVecs"]
+        full_g.ndata["EigVals"] = g.ndata["EigVals"]
+    except:
+        pass
+
+    # Populate edge features w/ 0s
+    full_g.edata["feat"] = torch.zeros(full_g.number_of_edges(), dtype=torch.long)
+    full_g.edata["real"] = torch.zeros(full_g.number_of_edges(), dtype=torch.long)
+
+    # Copy real edge data over
+    # full_g.edges[g.edges(form="uv")[0].tolist(), g.edges(form="uv")[1].tolist()].data[
+    #     "feat"
+    # ] = torch.ones(g.edata["feat"].shape[0], dtype=torch.long)
+    # full_g.edges[g.edges(form="uv")[0].tolist(), g.edges(form="uv")[1].tolist()].data[
+    #     "real"
+    # ] = torch.ones(g.edata["feat"].shape[0], dtype=torch.long)
+
+    return full_g

@@ -3,6 +3,8 @@ import torch.nn as nn
 from scipy import sparse as sp
 import numpy as np
 
+import random
+
 import dgl
 from dgl.data import CoraGraphDataset, CiteseerGraphDataset
 
@@ -11,7 +13,7 @@ from ogb.nodeproppred import DglNodePropPredDataset
 from model import GraphTransformer
 from train import train_iter_batched, evaluate_batched
 from args import get_parser
-from util import init_weights, print_args, get_dataloaders
+from util import init_weights, print_args, get_dataloaders, make_full_graph
 
 
 import argparse
@@ -35,8 +37,7 @@ def add_encodings(g, dim, type="lap"):
 
 
 def add_lap_encodings(g, dim):
-    """Add Laplacian positional encodings to the graph.
-    """
+    """Add Laplacian positional encodings to the graph."""
 
     A = g.adjacency_matrix(scipy_fmt="csr").astype(float)
     N = sp.diags(dgl.backend.asnumpy(g.in_degrees()).clip(1) ** -0.5, dtype=float)
@@ -50,8 +51,7 @@ def add_lap_encodings(g, dim):
 
 
 def run_single_graph_batched(g, args, *idx):
-    """Run training on a single graph, using minibatches for the nodes.
-    """
+    """Run training on a single graph, using minibatches for the nodes."""
 
     train_dataloader, val_dataloader, test_dataloader = get_dataloaders(g, args, *idx)
 
@@ -155,6 +155,33 @@ def main():
 
         dataset = CoraGraphDataset()
         g = dataset[0]
+
+        num_real_nodes = g.num_nodes()
+        real_nodes = list(range(num_real_nodes))
+        g.add_nodes(1)
+
+        # Change Topology
+        virtual_src = []
+        virtual_dst = []
+        virtual_node = num_real_nodes + 1
+        virtual_node_copy = [virtual_node] * num_real_nodes
+        virtual_src.extend(real_nodes)
+        virtual_src.extend(virtual_node_copy)
+        virtual_dst.extend(virtual_node_copy)
+        virtual_dst.extend(real_nodes)
+        g.add_edges(virtual_src, virtual_dst)
+
+        src_list = []
+        dst_list = []
+        for node1 in range(g.num_nodes()):
+            for node2 in range(g.num_nodes() - 1):
+                if random.uniform(0, 1) > 0.5:
+                    src_list.append(node1)
+                    dst_list.append(node2)
+
+        dgl.add_edges(g, src_list, dst_list)
+        g = dgl.to_simple(g)
+        g.ndata["train_mask"][-1] = 1
 
         train_idx = np.nonzero(g.ndata["train_mask"]).squeeze()
         valid_idx = np.nonzero(g.ndata["val_mask"]).squeeze()
