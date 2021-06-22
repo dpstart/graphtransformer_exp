@@ -49,39 +49,36 @@ class GraphTransformer(nn.Module):
         )
         self.mlp = MLPReadout(out_dim, num_classes)
 
-    def forward_bidirected(self, blocks, x, x_lap_pos_enc, src_nodes, dst_nodes):
+    # def forward_bidirected(self, blocks, x, x_lap_pos_enc, src_nodes, dst_nodes):
 
-        # EMBED + DROPOUT
-        h = self.embedding_h(x)
-        h = self.in_feat_dropout(h)
+    #     # EMBED + DROPOUT
+    #     h = self.embedding_h(x)
+    #     h = self.in_feat_dropout(h)
 
-        # EMBED POSITIONAL ENCODINGS AND ADD
-        h_lap_pos_enc = self.embedding_enc(x_lap_pos_enc.float())
-        h = h + h_lap_pos_enc
+    #     # EMBED POSITIONAL ENCODINGS AND ADD
+    #     h_lap_pos_enc = self.embedding_enc(x_lap_pos_enc.float())
+    #     h = h + h_lap_pos_enc
 
-        h_src = h[blocks[0].srcdata["_ID"]]
+    #     h_src = h[blocks[0].srcdata["_ID"]]
 
-        # Iterate through transformer layers
-        for i, layer in enumerate(self.layers):
-            h_src = layer.forward_bidirected(
-                blocks[i], h_src, h[blocks[i].dstdata["_ID"]]
-            )
+    #     # Iterate through transformer layers
+    #     for i, layer in enumerate(self.layers):
+    #         h_src = layer.forward_bidirected(
+    #             blocks[i], h_src, h[blocks[i].dstdata["_ID"]]
+    #         )
 
-        out = self.mlp(h_src)
-        return out
+    #     out = self.mlp(h_src)
+    #     return out
 
     def forward(self, g, x, x_enc):
-        # TODO add in feat dropout
 
         h = self.embedding_h(x)
         h = self.in_feat_dropout(h)
         h_enc = self.embedding_enc(x_enc)
         h = h + h_enc
 
-        # h = self.dropout(h)
-
         # Iterate through transformer layers
-        for i, layer in enumerate(self.layers):
+        for _, layer in enumerate(self.layers):
             h = layer(g, h)
 
         out = self.mlp(h)

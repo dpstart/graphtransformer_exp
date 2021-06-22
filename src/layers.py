@@ -190,6 +190,7 @@ class GraphTransformerLayer(nn.Module):
         h_in1 = x
 
         # attn_out: (dst_nodes, num_heads, num_head_features)
+
         attn_out = self.attention(g, x)
 
         # h: (dst_nodes, num_features)
@@ -205,23 +206,23 @@ class GraphTransformerLayer(nn.Module):
         h = self.sublayer(h, self.O)
         return h
 
-    def forward_bidirected(self, g, x_src, x_dst):
+    # def forward(self, g, x_src, x_dst):
 
-        # (dst_nodes, num_features)
-        h_in1 = x_dst
+    #     # (dst_nodes, num_features)
+    #     h_in1 = x_dst
 
-        # attn_out: (dst_nodes, num_heads, num_head_features)
-        attn_out = self.attention(g, x_src, x_dst)
+    #     # attn_out: (dst_nodes, num_heads, num_head_features)
+    #     attn_out = self.attention(g, x_src, x_dst)
 
-        # h: (dst_nodes, num_features)
-        h = h_in1 + (
-            F.dropout(
-                attn_out.view(-1, self.out_channels),
-                self.dropout,
-                training=self.training,
-            )
-        )
+    #     # h: (dst_nodes, num_features)
+    #     h = h_in1 + (
+    #         F.dropout(
+    #             attn_out.view(-1, self.out_channels),
+    #             self.dropout,
+    #             training=self.training,
+    #         )
+    #     )
 
-        h = self.norm(h)
-        h = self.sublayer(h, self.O)
-        return h
+    #     h = self.norm(h)
+    #     h = self.sublayer(h, self.O)
+    #     return h
