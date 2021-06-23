@@ -3,18 +3,13 @@ import torch.nn as nn
 from scipy import sparse as sp
 import numpy as np
 
-import random
-
 import dgl
-from dgl.data import CoraGraphDataset, CiteseerGraphDataset
-
-from ogb.nodeproppred import DglNodePropPredDataset
 
 from model import GraphTransformer
 from train import train_iter_batched, evaluate_batched
 from args import get_parser
-from util import init_weights, print_args, get_dataloaders, make_full_graph
-
+from util import init_weights, print_args, get_dataloaders, all_pairs_sp
+from data import get_dataset
 
 import argparse
 import json
@@ -50,15 +45,22 @@ def add_lap_encodings(g, dim):
     return g
 
 
-def run_single_graph_batched(g, args, *idx):
-    """Run training on a single graph, using minibatches for the nodes."""
-
-    train_dataloader, val_dataloader, test_dataloader = get_dataloaders(g, args, *idx)
-
-    model = GraphTransformer(args)
+def init_params(model):
     for p in model.parameters():
         if p.dim() > 1:
             torch.nn.init.xavier_uniform_(p)
+    return model
+
+
+def run_single_graph_batched(g, args, *idx, virtual_nodes=None):
+    """Run training on a single graph, using minibatches for the nodes."""
+
+    train_dataloader, val_dataloader, test_dataloader = get_dataloaders(
+        g, args, *idx, virtual_nodes=virtual_nodes
+    )
+
+    model = GraphTransformer(args)
+    model = init_params(model)
     print(f"[!] No. of params: {sum(p.numel() for p in model.parameters())}")
 
     optimizer = torch.optim.Adam(
@@ -76,10 +78,10 @@ def run_single_graph_batched(g, args, *idx):
         epoch_train_losses, epoch_val_losses = [], []
         epoch_train_accs, epoch_val_accs = [], []
 
-        for input_nodes, output_nodes, blocks in train_dataloader:
+        for blocks in train_dataloader:
 
             loss, acc, optimizer = train_iter_batched(
-                model, g, input_nodes, output_nodes, blocks, optimizer, args.device
+                model, g, blocks, optimizer, args.device
             )
 
             epoch_train_losses.append(loss)
@@ -92,11 +94,9 @@ def run_single_graph_batched(g, args, *idx):
         if epoch % args.val_interval == 0:
 
             epoch_val_losses, epoch_val_accs = [], []
-            for input_nodes, output_nodes, blocks in val_dataloader:
+            for _, _, blocks in val_dataloader:
 
-                eval_loss, eval_acc = evaluate_batched(
-                    model, g, input_nodes, output_nodes, blocks, args.device
-                )
+                eval_loss, eval_acc = evaluate_batched(model, g, blocks, args.device)
                 epoch_val_losses.append(eval_loss)
                 epoch_val_accs.append(eval_acc)
 
@@ -138,80 +138,34 @@ def main():
 
     ###### Load Datasets
 
-    if args.dataset == "arxiv":
-        dataset = DglNodePropPredDataset(name="ogbn-arxiv")
-        split_idx = dataset.get_idx_split()
-        train_idx, valid_idx, test_idx = (
-            split_idx["train"],
-            split_idx["valid"],
-            split_idx["test"],
-        )
-        g, label = dataset[0]
-        g.ndata["label"] = label
+    g, num_classes, train_idx, valid_idx, test_idx, virtual_nodes = get_dataset(
+        args.dataset, add_virtual_node=True
+    )
 
-        args.num_classes = (np.amax(g.ndata["label"].numpy(), axis=0) + 1)[0]
+    # All pairs shortest path distance
+    # sp = all_pairs_sp(g)
 
-    elif args.dataset == "cora":
+    # dist = []
+    # close = {}
+    # n = 5
+    # for n in range(g.num_nodes()):
 
-        dataset = CoraGraphDataset()
-        g = dataset[0]
+    #     for k, v in sp[n].items():
+    #         dist.append(v)
 
-        num_real_nodes = g.num_nodes()
-        real_nodes = list(range(num_real_nodes))
-        g.add_nodes(1)
+    #     for i, n in enumerate(dist):
+    #         if n == 1:
+    #             dist[i] = 9999999999
+    #     close[k] = np.argsort(dist)[:n]
+    #     dist = []
 
-        # Change Topology
-        virtual_src = []
-        virtual_dst = []
-        virtual_node = num_real_nodes + 1
-        virtual_node_copy = [virtual_node] * num_real_nodes
-        virtual_src.extend(real_nodes)
-        virtual_src.extend(virtual_node_copy)
-        virtual_dst.extend(virtual_node_copy)
-        virtual_dst.extend(real_nodes)
-        g.add_edges(virtual_src, virtual_dst)
+    # for k, v in close.items():
+    #     g.add_edges([k] * len(v), v)
 
-        src_list = []
-        dst_list = []
-        for node1 in range(g.num_nodes()):
-            for node2 in range(g.num_nodes() - 1):
-                if random.uniform(0, 1) > 0.5:
-                    src_list.append(node1)
-                    dst_list.append(node2)
+    # g = dgl.add_reverse_edges(g)
+    # g = dgl.to_simple(g)
 
-        dgl.add_edges(g, src_list, dst_list)
-        g = dgl.to_simple(g)
-        g.ndata["train_mask"][-1] = 1
-
-        train_idx = np.nonzero(g.ndata["train_mask"]).squeeze()
-        valid_idx = np.nonzero(g.ndata["val_mask"]).squeeze()
-        test_idx = np.nonzero(g.ndata["test_mask"]).squeeze()
-        args.num_classes = 7
-
-    elif args.dataset == "citeseer":
-
-        dataset = CiteseerGraphDataset()
-        g = dataset[0]
-
-        train_idx = np.nonzero(g.ndata["train_mask"]).squeeze()
-        valid_idx = np.nonzero(g.ndata["val_mask"]).squeeze()
-        test_idx = np.nonzero(g.ndata["test_mask"]).squeeze()
-
-        args.num_classes = 6
-
-    elif args.dataset == "products":
-        dataset = DglNodePropPredDataset(name="ogbn-products")
-        split_idx = dataset.get_idx_split()
-        train_idx, valid_idx, test_idx = (
-            split_idx["train"],
-            split_idx["valid"],
-            split_idx["test"],
-        )
-        g, label = dataset[0]
-        g.ndata["label"] = label
-
-        args.num_classes = (np.amax(g.ndata["label"].numpy(), axis=0) + 1)[0]
-
+    args.num_classes = num_classes
     args.in_dim = g.ndata["feat"].shape[1]
 
     print("[!] Dataset loaded")
@@ -222,7 +176,9 @@ def main():
     #### Add Positional Encodings
     g = add_encodings(g, int(args.pos_enc_dim), type="lap")
     print("[!] Added positional encodings")
-    run_single_graph_batched(g, args, train_idx, valid_idx, test_idx)
+    run_single_graph_batched(
+        g, args, train_idx, valid_idx, test_idx, virtual_nodes=virtual_nodes
+    )
 
 
 if __name__ == "__main__":

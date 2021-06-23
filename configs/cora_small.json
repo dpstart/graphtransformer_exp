@@ -16,5 +16,5 @@
   "lap_pos_enc": true,
   "pos_enc_dim": 10,
   "num_layers": 2,
-  "blocks": false
+  "blocks": true
 }

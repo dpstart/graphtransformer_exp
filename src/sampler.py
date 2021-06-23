@@ -5,6 +5,29 @@ import torch
 from partition_util import *
 
 
+class NeighborSampler(object):
+    def __init__(self, g, fanouts, add_nodes):
+        self.g = g
+        self.fanouts = fanouts
+        self.add_nodes = add_nodes
+
+    def sample_blocks(self, seeds):
+
+        if self.add_nodes is not None:
+            seeds = np.append(seeds, self.add_nodes)
+        seeds = torch.LongTensor(seeds)
+        blocks = []
+        for fanout in self.fanouts:
+            # For each seed node, sample ``fanout`` neighbors.
+            frontier = dgl.sampling.sample_neighbors(self.g, np.unique(seeds), fanout)
+            # Then we compact the frontier into a bipartite graph for message passing.
+            block = dgl.to_block(frontier, np.unique(seeds))
+            # Obtain the seed nodes for next layer.
+            seeds = block.srcdata[dgl.NID]
+            blocks.insert(0, block)
+        return blocks
+
+
 class ClusterIter(object):
     """The partition sampler given a DGLGraph and partition number.
     The metis is used as the graph partition backend.
